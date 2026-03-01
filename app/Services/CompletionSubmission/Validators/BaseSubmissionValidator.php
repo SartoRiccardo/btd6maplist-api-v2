@@ -25,6 +25,7 @@ class BaseSubmissionValidator implements SubmissionValidatorInterface
     {
         $this->validateFormatSubmissionStatus($data['format_id'], $data['lcc'] ?? null);
         $this->validateUserPermission($user, $data['format_id']);
+        $this->validateUserInPlayers($user, $data['players']);
         $this->validateRecordingRequirement($user, $data, $data['format_id']);
         $this->validateMapForFormat($data['map'], $data['format_id']);
     }
@@ -67,6 +68,23 @@ class BaseSubmissionValidator implements SubmissionValidatorInterface
         if (!$user->hasPermission('create:completion_submission', $formatId)) {
             throw ValidationException::withMessages([
                 'format_id' => "You do not have permission to submit completions for this format.",
+            ]);
+        }
+    }
+
+    /**
+     * Validate that the user is included in the players list.
+     *
+     * @param User $user
+     * @param array $players
+     * @return void
+     * @throws ValidationException
+     */
+    protected function validateUserInPlayers(User $user, array $players): void
+    {
+        if (!in_array($user->discord_id, $players)) {
+            throw ValidationException::withMessages([
+                'players' => "You must include yourself in the players list.",
             ]);
         }
     }

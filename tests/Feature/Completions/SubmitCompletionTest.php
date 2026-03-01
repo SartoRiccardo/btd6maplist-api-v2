@@ -90,7 +90,7 @@ class SubmitCompletionTest extends TestCase
         $payload = [
             'map' => $map->code,
             'format_id' => FormatConstants::MAPLIST,
-            'players' => [$player->discord_id],
+            'players' => [$user->discord_id, $player->discord_id],
             'proof_images' => $this->createProofImages(),
         ];
 
@@ -98,6 +98,254 @@ class SubmitCompletionTest extends TestCase
             ->postJson($this->endpoint(), $payload)
             ->assertStatus(422)
             ->assertJson(['message' => 'You do not have permission to submit completions for this format.']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_submission_without_having_yourself_in_player_ids_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $otherPlayer = User::factory()->create(['discord_id' => '123456789012345678']);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$otherPlayer->discord_id], // User not in players
+            'proof_images' => $this->createProofImages(),
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJson(['message' => 'You must include yourself in the players list.']);
+    }
+
+    // ========== BASIC VALIDATION TESTS ==========
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_empty_players_array_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [],
+            'proof_images' => $this->createProofImages(),
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['players']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_duplicate_players_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $player = User::factory()->create(['discord_id' => '123456789012345678']);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$player->discord_id, $player->discord_id],
+            'proof_images' => $this->createProofImages(),
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['players.1']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_invalid_player_id_format_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => ['invalid_id'],
+            'proof_images' => $this->createProofImages(),
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['players.0']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_nonexistent_player_id_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => ['123456789012345678'], // Doesn't exist
+            'proof_images' => $this->createProofImages(),
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['players.0']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_invalid_map_code_returns_422(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $payload = [
+            'map' => 'INVALID',
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => ['123456789012345678'],
+            'proof_images' => $this->createProofImages(),
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['map']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_empty_payload_returns_all_required_field_errors(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['map', 'format_id', 'players', 'proof_images']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_too_many_proof_images_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$user->discord_id, '123456789012345678'],
+            'proof_images' => $this->createProofImages(5), // Max is 4
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['proof_images']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_too_many_proof_videos_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $videos = [];
+        for ($i = 0; $i < 11; $i++) {
+            $videos[] = 'https://youtube.com/watch?v=test' . $i;
+        }
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$user->discord_id, '123456789012345678'],
+            'proof_images' => $this->createProofImages(),
+            'proof_videos' => $videos, // Max is 10
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['proof_videos']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_invalid_video_url_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$user->discord_id, '123456789012345678'],
+            'proof_images' => $this->createProofImages(),
+            'proof_videos' => ['not-a-valid-url'],
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['proof_videos.0']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_invalid_image_file_type_returns_422(): void
+    {
+        Storage::fake('public');
+
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$user->discord_id, '123456789012345678'],
+            'proof_images' => [UploadedFile::fake()->create('test.pdf', 100)],
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['proof_images.0']);
+    }
+
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_null_submission_notes_works(): void
+    {
+        Storage::fake('public');
+
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$user->discord_id],
+            'proof_images' => $this->createProofImages(),
+            'subm_notes' => null,
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(201);
     }
 
     // ========== FORMAT STATUS TESTS ==========
@@ -167,7 +415,7 @@ class SubmitCompletionTest extends TestCase
         $payload = [
             'map' => $map->code,
             'format_id' => FormatConstants::MAPLIST,
-            'players' => [$player->discord_id],
+            'players' => [$user->discord_id, $player->discord_id],
             'proof_images' => $this->createProofImages(),
         ];
 
@@ -189,7 +437,7 @@ class SubmitCompletionTest extends TestCase
         $payload = [
             'map' => $map->code,
             'format_id' => FormatConstants::MAPLIST,
-            'players' => [$player->discord_id],
+            'players' => [$user->discord_id, $player->discord_id],
             'black_border' => true,
             'proof_images' => $this->createProofImages(),
         ];
@@ -216,7 +464,7 @@ class SubmitCompletionTest extends TestCase
         $payload = [
             'map' => $map->code,
             'format_id' => FormatConstants::EXPERT_LIST,
-            'players' => [$player->discord_id],
+            'players' => [$user->discord_id, $player->discord_id],
             'no_geraldo' => true,
             'proof_images' => $this->createProofImages(),
         ];
@@ -240,7 +488,7 @@ class SubmitCompletionTest extends TestCase
         $payload = [
             'map' => $map->code,
             'format_id' => FormatConstants::EXPERT_LIST,
-            'players' => [$player->discord_id],
+            'players' => [$user->discord_id, $player->discord_id],
             'no_geraldo' => true,
             'proof_images' => $this->createProofImages(),
         ];
@@ -270,7 +518,7 @@ class SubmitCompletionTest extends TestCase
         $payload = [
             'map' => $map->code,
             'format_id' => FormatConstants::NOSTALGIA_PACK,
-            'players' => [$player->discord_id],
+            'players' => [$user->discord_id, $player->discord_id],
             'lcc' => ['leftover' => 1000],
             'proof_images' => $this->createProofImages(),
         ];
@@ -297,7 +545,7 @@ class SubmitCompletionTest extends TestCase
         $payload = [
             'map' => $map->code,
             'format_id' => FormatConstants::MAPLIST,
-            'players' => [$player->discord_id],
+            'players' => [$user->discord_id, $player->discord_id],
             'proof_images' => $this->createProofImages(),
         ];
 

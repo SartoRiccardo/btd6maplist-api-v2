@@ -34,7 +34,7 @@ class MaplistValidatorTest extends BaseValidatorTest
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,
@@ -59,7 +59,7 @@ class MaplistValidatorTest extends BaseValidatorTest
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,
@@ -84,7 +84,7 @@ class MaplistValidatorTest extends BaseValidatorTest
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => true,
             'no_geraldo' => false,
@@ -109,7 +109,7 @@ class MaplistValidatorTest extends BaseValidatorTest
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => true,
@@ -134,7 +134,7 @@ class MaplistValidatorTest extends BaseValidatorTest
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,

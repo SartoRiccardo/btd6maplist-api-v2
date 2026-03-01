@@ -31,7 +31,7 @@ class BaseValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,
@@ -56,7 +56,7 @@ class BaseValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,
@@ -81,7 +81,7 @@ class BaseValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,
@@ -108,7 +108,7 @@ class BaseValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,
@@ -133,7 +133,7 @@ class BaseValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,
@@ -158,7 +158,7 @@ class BaseValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,

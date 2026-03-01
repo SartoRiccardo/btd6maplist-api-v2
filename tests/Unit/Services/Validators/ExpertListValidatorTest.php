@@ -30,7 +30,7 @@ class ExpertListValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => true,
             'no_geraldo' => false,
@@ -55,7 +55,7 @@ class ExpertListValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => false,
@@ -80,7 +80,7 @@ class ExpertListValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => true,
@@ -104,7 +104,7 @@ class ExpertListValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => true,
@@ -129,7 +129,7 @@ class ExpertListValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => ['https://www.youtube.com/watch?v=test'],
             'black_border' => false,
             'no_geraldo' => true,
@@ -153,7 +153,7 @@ class ExpertListValidatorTest extends ValidatorTestCase
         $data = [
             'format_id' => $format->id,
             'map' => $map->code,
-            'players' => ['123456789012345678'],
+            'players' => [$user->discord_id],
             'proof_videos' => [],
             'black_border' => false,
             'no_geraldo' => true,
