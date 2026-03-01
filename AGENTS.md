@@ -72,8 +72,12 @@ script:post-response {
 }
 ```
 
-# **IMPORTANT:** Current, most important Task
+# Tools
 
-The current project is being REWRITTEN in Laravel from a Python codebase in a custom framework. You may find this project at ~/w/btd6maplist/api
+## Database Schema
 
-The database schema is FULLY IMPORTED, you are FORBIDDEN from creating any migrations until we achiveve 100% feature and test parity. Read pgsql-schema.sql and the tools if you have any doubts on what exists and what doesn't in the database. Never query the database directly.
+To query the database schema, you must strictly use custom MCP tools if available. Never query the database directly.
+
+## GitHub CLI
+
+The GitHub CLI (`gh`) is installed and available. Use it directly to view issues, pull requests, and other GitHub resources.

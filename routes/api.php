@@ -80,6 +80,7 @@ Route::prefix('completions')
                 Route::put('/transfer', 'transfer');
 
                 Route::post('/', 'save');
+                Route::post('/submit', 'submit');
                 Route::put('/{id}', 'update');
                 Route::delete('/{id}', 'destroy');
             });

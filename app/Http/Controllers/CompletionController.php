@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Constants\FormatConstants;
-use App\Constants\ProofType;
-use App\Http\Requests\Completion\CompletionRequest;
 use App\Http\Requests\Completion\IndexCompletionRequest;
 use App\Http\Requests\Completion\StoreCompletionRequest;
+use App\Http\Requests\Completion\SubmitCompletionRequest;
 use App\Http\Requests\Completion\UpdateCompletionRequest;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
-use App\Models\CompletionProof;
-use App\Models\Config;
 use App\Models\LeastCostChimps;
 use App\Models\MapListMeta;
+use App\Services\CompletionSubmission\CompletionSubmissionValidatorFactory;
+use App\Services\CompletionService;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -334,6 +332,51 @@ class CompletionController
     }
 
     /**
+     * Submit a new completion for review.
+     *
+     * @OA\Post(
+     *     path="/completions/submit",
+     *     summary="Submit a completion",
+     *     description="Creates a pending completion (not auto-accepted). Requires create:completion_submission permission. Validations are performed based on the format's rules. Use multipart/form-data for file uploads.",
+     *     tags={"Completions"},
+     *     security={{"discord_auth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(ref="#/components/schemas/StoreCompletionRequest")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Completion submitted successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="id", type="integer", description="The created completion ID", example=123)
+     *         )
+     *     ),
+     *     @OA\Response(response=403, description="Forbidden - Permission or validation violation"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function submit(StoreCompletionRequest $request, CompletionService $service)
+    {
+        $user = auth()->guard('discord')->user();
+        $data = $request->validated();
+
+        // Add proof_images files to data array for CompletionService
+        $data['proof_images'] = $request->file('proof_images', []);
+
+        // Run format-specific validation
+        $validator = app(CompletionSubmissionValidatorFactory::class)->getValidator($data['format_id']);
+        $validator->validate($data, $user);
+
+        // Create the completion (not auto-accepted)
+        $result = $service->create($data, $user, autoAccept: false);
+
+        return response()->json(['id' => $result['completion_id']], 201);
+    }
+
+    /**
      * Store a newly created completion in storage.
      *
      * @OA\Post(
@@ -360,9 +403,8 @@ class CompletionController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function save(StoreCompletionRequest $request)
+    public function save(StoreCompletionRequest $request, CompletionService $service)
     {
-        $now = Carbon::now();
         $user = auth()->guard('discord')->user();
         $validated = $request->validated();
 
@@ -380,70 +422,14 @@ class CompletionController
             return response()->json(['message' => 'Forbidden - You do not have permission to create completions for this format.'], 403);
         }
 
-        return DB::transaction(function () use ($validated, $user, $now, $request) {
-            // Create the Completion base record
-            $completion = Completion::create([
-                'map_code' => $validated['map'],
-                'submitted_on' => $now,
-                'subm_notes' => $validated['subm_notes'] ?? null,
-            ]);
+        // Add proof_images files to data array for CompletionService
+        $data = $validated;
+        $data['proof_images'] = $request->file('proof_images', []);
 
-            // Handle proof image uploads
-            if ($request->hasFile('proof_images')) {
-                foreach ($request->file('proof_images') as $index => $file) {
-                    $extension = $file->getClientOriginalExtension();
-                    $path = $file->storeAs(
-                        "completion_proofs/{$completion->id}",
-                        "img_{$index}.{$extension}",
-                        'public'
-                    );
+        // Create the completion with auto-accept
+        $result = $service->create($data, $user, autoAccept: true);
 
-                    CompletionProof::create([
-                        'run' => $completion->id,
-                        'proof_url' => Storage::disk('public')->url($path),
-                        'proof_type' => ProofType::IMAGE,
-                    ]);
-                }
-            }
-
-            // Handle video proof URLs
-            foreach ($validated['proof_videos'] as $videoUrl) {
-                CompletionProof::create([
-                    'run' => $completion->id,
-                    'proof_url' => $videoUrl,
-                    'proof_type' => ProofType::VIDEO,
-                ]);
-            }
-
-            // Handle LCC - create new record if provided
-            $lccId = null;
-            if (isset($validated['lcc']) && is_array($validated['lcc'])) {
-                $lcc = LeastCostChimps::create([
-                    'leftover' => $validated['lcc']['leftover'],
-                ]);
-                $lccId = $lcc->id;
-            }
-
-            // Auto-accept (admin-only endpoint)
-            $acceptedBy = $user->discord_id;
-
-            // Create CompletionMeta
-            $meta = CompletionMeta::create([
-                'completion_id' => $completion->id,
-                'format_id' => $validated['format_id'],
-                'black_border' => $validated['black_border'] ?? false,
-                'no_geraldo' => $validated['no_geraldo'] ?? false,
-                'lcc_id' => $lccId,
-                'accepted_by_id' => $acceptedBy,
-                'created_on' => $now,
-                'deleted_on' => null,
-            ]);
-
-            // Attach players via pivot table
-            $meta->players()->attach($validated['players']);
-
-            return response()->json(['id' => $completion->id], 201);
-        });
+        return response()->json(['id' => $result['completion_id']], 201);
     }
 
     /**

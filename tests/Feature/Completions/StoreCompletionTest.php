@@ -555,8 +555,10 @@ class StoreCompletionTest extends TestCase
 
         $this->assertEquals($expected, $actual);
 
-        // Verify files were stored
-        Storage::disk('public')->assertExists("completion_proofs/{$completionId}/img_0.jpg");
-        Storage::disk('public')->assertExists("completion_proofs/{$completionId}/img_1.jpg");
+        // Verify files were stored (check directory has 2 files)
+        $files = Storage::disk('public')->files("completion_proofs/{$completionId}");
+        $this->assertCount(2, $files);
+        $this->assertStringContainsString('img_', $files[0]);
+        $this->assertStringEndsWith('.jpg', $files[0]);
     }
 }

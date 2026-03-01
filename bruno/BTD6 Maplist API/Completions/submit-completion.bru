@@ -1,0 +1,32 @@
+meta {
+  name: Submit Completion
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/api/completions/submit
+  body: multipart-form-data
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+}
+
+body:multipart-form-data {
+    map: TKIEXYSQ
+    format_id: 1
+    black_border: false
+    no_geraldo: false
+    subm_notes: Optional submission notes here
+    players[]: 123456789012345678
+    lcc[leftover]: 5000
+    proof_videos[]: https://www.youtube.com/watch?v=example
+    // Note: proof_images should be uploaded as files (1-4 images)
+    // Bruno doesn't support file uploads in this view
+}

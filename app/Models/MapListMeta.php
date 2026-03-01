@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Constants\FormatConstants;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -123,5 +124,19 @@ class MapListMeta extends Model
             ->orderBy('code')
             ->orderBy('created_on', 'desc')
             ->orderBy('id', 'desc');
+    }
+
+    /**
+     * Get the active map meta for a map at a certain timestamp
+     * @param string $mapCode
+     * @param Carbon $timestamp
+     * @return MapListMeta|null
+     */
+    public static function activeForMap(string $mapCode, Carbon $timestamp): MapListMeta|null
+    {
+        return self::where('code', $mapCode)
+            ->where('created_on', '<=', $timestamp)
+            ->orderBy('created_on', 'desc')
+            ->first();
     }
 }
