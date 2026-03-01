@@ -189,4 +189,67 @@ abstract class TestCase extends BaseTestCase
         }
     }
 
+    /**
+     * Get all keys from an array except the ones specified (inverse of pick).
+     * Supports dot notation for nested keys and wildcards.
+     *
+     * @param array $data Source array
+     * @param array $keys Keys to exclude (supports dot.notation for nested arrays, and * for wildcards)
+     * @return array Array with all keys except the ones specified
+     */
+    protected function except(array $data, array $keys): array
+    {
+        $result = $data;
+
+        // Process wildcard patterns first (e.g., '*.id')
+        $wildcardKeys = array_filter($keys, fn($k) => str_starts_with($k, '*.'));
+        $specificKeys = array_diff($keys, $wildcardKeys);
+
+        // Apply wildcards to all items in the array
+        foreach ($wildcardKeys as $keyPath) {
+            $parts = explode('.', $keyPath);
+            // Remove the '*' and process remaining parts for each item
+            $remainingParts = array_slice($parts, 1);
+
+            foreach ($result as $key => &$value) {
+                if (is_array($value)) {
+                    $this->exceptNested($value, $remainingParts);
+                }
+            }
+            unset($value);
+        }
+
+        // Apply specific key paths
+        foreach ($specificKeys as $keyPath) {
+            $parts = explode('.', $keyPath);
+            $this->exceptNested($result, $parts);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Recursively remove nested values from array data.
+     *
+     * @param array &$source Source array to remove from (modified by reference)
+     * @param array $parts Parts of the key path to remove
+     */
+    private function exceptNested(array &$source, array $parts): void
+    {
+        $part = $parts[0];
+        $isLast = (count($parts) === 1);
+
+        if ($isLast) {
+            // Last part - remove the key
+            unset($source[$part]);
+        } else {
+            // Not the last part - recurse
+            $remainingParts = array_slice($parts, 1);
+
+            if (array_key_exists($part, $source) && is_array($source[$part])) {
+                $this->exceptNested($source[$part], $remainingParts);
+            }
+        }
+    }
+
 }

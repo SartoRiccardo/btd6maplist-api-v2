@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Completion\IndexCompletionRequest;
 use App\Http\Requests\Completion\StoreCompletionRequest;
-use App\Http\Requests\Completion\SubmitCompletionRequest;
 use App\Http\Requests\Completion\UpdateCompletionRequest;
 use App\Models\Completion;
 use App\Models\CompletionMeta;

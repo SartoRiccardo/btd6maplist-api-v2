@@ -7,6 +7,7 @@ use App\Http\Requests\Map\IndexMapRequest;
 use App\Http\Requests\Map\MapRequest;
 use App\Http\Requests\Map\StoreMapRequest;
 use App\Models\Config;
+use App\Models\CompletionMeta;
 use App\Models\Creator;
 use App\Models\Map;
 use App\Models\MapAlias;
@@ -761,5 +762,165 @@ class MapController
 
             return response()->noContent();
         });
+    }
+
+    /**
+     * Transfer completions from one map to another.
+     *
+     * @OA\Put(
+     *     path="/maps/{code}/completions/transfer",
+     *     summary="Transfer completions from one map to another",
+     *     description="Bulk-transfers completions from source map to target map. User must have edit:completion permission for the completion's format (or global permission). Original completions are soft-deleted. Operation is atomic - either all completions transfer or none do.",
+     *     tags={"Maps", "Completions"},
+     *     security={{"discord_auth": {}}},
+     *     @OA\Parameter(
+     *         name="code",
+     *         in="path",
+     *         required=true,
+     *         description="Source map code",
+     *         @OA\Schema(type="string", example="TKIEXYSQ")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(
+     *                 required={"target_map_code"},
+     *                 @OA\Property(property="target_map_code", type="string", example="TKIEXYSQ")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=204,
+     *         description="Completions transferred successfully"
+     *     ),
+     *     @OA\Response(response=403, description="Forbidden - No edit:completion permission"),
+     *     @OA\Response(response=404, description="Source map not found"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function transferCompletions(Request $request, $code)
+    {
+        $now = Carbon::now();
+        $user = auth()->guard('discord')->user();
+
+        // Validate request
+        $validated = $request->validate([
+            'target_map_code' => ['required', 'string', 'max:10'],
+        ]);
+
+        // Validate source and target are not the same
+        if ($code === $validated['target_map_code']) {
+            return response()->json(['errors' => ['target_map_code' => ['Target map cannot be the same as source map.']]], 422);
+        }
+
+        // Check if source map exists
+        $sourceMap = Map::find($code);
+        if (!$sourceMap) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        // Check if target map exists
+        $targetMap = Map::find($validated['target_map_code']);
+        if (!$targetMap) {
+            return response()->json(['message' => 'The selected target map code is invalid.'], 422);
+        }
+
+        // Get user's permissions for edit:completion
+        $userFormatIds = $user->formatsWithPermission('edit:completion');
+        $hasGlobalPermission = in_array(null, $userFormatIds, true);
+
+        // Check if user has any edit:completion permission
+        if (!$hasGlobalPermission && empty(array_filter($userFormatIds))) {
+            return response()->json(['message' => 'Forbidden - You do not have permission to transfer completions.'], 403);
+        }
+
+        // Build format_ids array for SQL binding
+        $formatIds = [];
+        if (!$hasGlobalPermission) {
+            $formatIds = array_filter($userFormatIds); // Remove null values
+        }
+
+        // Execute atomic transfer transaction
+        DB::transaction(function () use ($code, $validated, $now, $formatIds) {
+            // Get the latest_completions CTE using the model method
+            $latestMetaQuery = CompletionMeta::activeAtTimestamp($now);
+            $latestMetaSql = $latestMetaQuery->toSql();
+            $latestMetaBindings = $latestMetaQuery->getBindings();
+
+            // Build SQL based on whether we're filtering by format
+            $formatFilter = '';
+            $additionalParams = [];
+
+            if (!empty($formatIds)) {
+                // Filter by format_ids
+                $placeholders = implode(',', array_fill(0, count($formatIds), '?'));
+                $formatFilter = 'AND cm.format_id IN (' . $placeholders . ')';
+                $additionalParams = $formatIds;
+            }
+
+            $params = [
+                ...$latestMetaBindings,
+                $validated['target_map_code'],
+                $code,
+                ...$additionalParams,
+                $now,
+                ...$additionalParams,
+                $now,
+            ];
+
+            $sql = "
+            WITH latest_completions AS (
+                {$latestMetaSql}
+            ),
+            copied_completions AS (
+                INSERT INTO completions
+                    (map_code, submitted_on, subm_notes, subm_wh_payload, copied_from_id)
+                SELECT
+                    ?, c.submitted_on, c.subm_notes, c.subm_wh_payload, c.id
+                FROM completions c
+                JOIN latest_completions cm
+                    ON c.id = cm.completion_id
+                WHERE c.map_code = ?
+                    AND cm.deleted_on IS NULL
+                    {$formatFilter}
+                RETURNING id AS new_id, copied_from_id AS old_id
+            ),
+            copied_completion_metas AS (
+                INSERT INTO completions_meta
+                    (completion_id, black_border, no_geraldo, lcc_id, accepted_by_id, format_id, created_on, copied_from_id)
+                SELECT
+                    cc.new_id, cm.black_border, cm.no_geraldo, cm.lcc_id, cm.accepted_by_id, cm.format_id, ?, cm.id
+                FROM latest_completions cm
+                JOIN copied_completions cc
+                    ON cm.completion_id = cc.old_id
+                WHERE cm.deleted_on IS NULL
+                    {$formatFilter}
+                RETURNING id AS new_id, copied_from_id AS old_id
+            ),
+            delete_old_completions AS (
+                UPDATE completions_meta cm
+                SET
+                    deleted_on = ?
+                FROM copied_completion_metas ccm
+                WHERE ccm.old_id = cm.id
+            ),
+            copied_users AS (
+                INSERT INTO comp_players
+                    (user_id, run)
+                SELECT
+                    cp.user_id, ccm.new_id
+                FROM comp_players cp
+                JOIN copied_completion_metas ccm
+                    ON ccm.old_id = cp.run
+                RETURNING user_id
+            )
+            SELECT * FROM latest_completions
+            ";
+
+            DB::statement($sql, $params);
+        });
+
+        return response()->noContent();
     }
 }

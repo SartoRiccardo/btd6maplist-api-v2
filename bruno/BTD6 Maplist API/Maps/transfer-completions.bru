@@ -1,0 +1,26 @@
+meta {
+  name: Transfer Completions
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{BASE_URL}}/api/maps/SOURCECODE/completions/transfer
+  auth: bearer
+  body: json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "target_map_code": "TARGETCODE"
+  }
+}

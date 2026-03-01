@@ -65,6 +65,7 @@ Route::prefix('maps')
                 Route::post('/', 'save');
                 Route::put('/{id}', 'update');
                 Route::delete('/{id}', 'destroy');
+                Route::put('/{code}/completions/transfer', 'transferCompletions');
             });
     });
 
@@ -77,8 +78,6 @@ Route::prefix('completions')
 
         Route::middleware('discord.auth')
             ->group(function () {
-                Route::put('/transfer', 'transfer');
-
                 Route::post('/', 'save');
                 Route::post('/submit', 'submit');
                 Route::put('/{id}', 'update');
