@@ -253,13 +253,8 @@ class CompletionController
         }
 
         // Get active CompletionMeta at timestamp
-        $latestMetaCte = CompletionMeta::activeAtTimestamp($timestamp);
-        $metaRelations = ['lcc', 'players', 'acceptedBy'];
-        $meta = CompletionMeta::from(DB::raw("({$latestMetaCte->toSql()}) as completions_meta"))
-            ->setBindings($latestMetaCte->getBindings())
-            ->with($metaRelations)
-            ->where('completion_id', $completion->id)
-            ->first();
+        $meta = CompletionMeta::activeForCompletion($completion->id, $timestamp);
+        $meta?->load(['lcc', 'players', 'acceptedBy']);
 
         if (!$meta) {
             return response()->json(['message' => 'Not Found'], 404);
@@ -561,8 +556,59 @@ class CompletionController
         });
     }
 
+    /**
+     * Remove the specified completion from storage (soft delete).
+     *
+     * @OA\Delete(
+     *     path="/completions/{id}",
+     *     summary="Delete a completion",
+     *     description="Soft-deletes a completion by setting its deleted_on timestamp. User must have edit:completion permission for the completion's format. Idempotent - deleting an already-deleted completion returns 204 without changes.",
+     *     tags={"Completions"},
+     *     security={{"discord_auth": {}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="The completion ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=204,
+     *         description="Completion deleted successfully"
+     *     ),
+     *     @OA\Response(response=403, description="Forbidden - User lacks edit:completion permission for this format"),
+     *     @OA\Response(response=404, description="Completion not found")
+     * )
+     */
     public function destroy($id)
     {
-        return response()->json(['message' => 'Not Implemented'], 501);
+        $now = Carbon::now();
+        $user = auth()->guard('discord')->user();
+
+        // Get user's formats with edit:completion permission
+        $userFormatIds = $user->formatsWithPermission('edit:completion');
+
+        // Get current active CompletionMeta
+        $existingMeta = CompletionMeta::activeForCompletion($id, $now);
+
+        if (!$existingMeta) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        // Permission check: Must have edit:completion on the completion's format
+        $hasGlobalPermission = in_array(null, $userFormatIds, true);
+        $hasFormatPermission = in_array($existingMeta->format_id, $userFormatIds, true);
+
+        if (!$hasGlobalPermission && !$hasFormatPermission) {
+            return response()->json(['message' => 'Forbidden - You do not have permission to delete completions for this format.'], 403);
+        }
+
+        // Idempotent: Only set deleted_on if it's not already set
+        if ($existingMeta->deleted_on === null) {
+            $existingMeta->deleted_on = $now;
+            $existingMeta->save();
+        }
+
+        return response()->noContent();
     }
 }

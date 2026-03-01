@@ -1,0 +1,18 @@
+meta {
+  name: Delete Completion
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{BASE_URL}}/api/completions/1
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+}

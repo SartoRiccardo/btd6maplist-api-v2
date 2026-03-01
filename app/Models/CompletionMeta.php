@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -135,7 +136,7 @@ class CompletionMeta extends Model
 
     /**
      * Partial raw query to get the active metas at a timestamp.
-     * 
+     *
      * @param mixed $timestamp
      */
     public static function activeAtTimestamp($timestamp): \Illuminate\Database\Eloquent\Builder
@@ -144,5 +145,20 @@ class CompletionMeta extends Model
             ->where('created_on', '<=', $timestamp)
             ->orderBy('completion_id')
             ->orderBy('created_on', 'desc');
+    }
+
+    /**
+     * Get the active completion meta for a completion at a certain timestamp.
+     *
+     * @param int $completionId
+     * @param Carbon $timestamp
+     * @return CompletionMeta|null
+     */
+    public static function activeForCompletion(int $completionId, Carbon $timestamp): CompletionMeta|null
+    {
+        return self::where('completion_id', $completionId)
+            ->where('created_on', '<=', $timestamp)
+            ->orderBy('created_on', 'desc')
+            ->first();
     }
 }
