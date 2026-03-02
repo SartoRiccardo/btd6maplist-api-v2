@@ -19,8 +19,14 @@ class MapSubmission extends Model
         'format_id',
         'proposed',
         'rejected_by',
+        'accepted_meta_id',
         'created_on',
         'completion_proof',
+        'wh_data',
+        'wh_msg_id',
+    ];
+
+    protected $hidden = [
         'wh_data',
         'wh_msg_id',
     ];
@@ -51,5 +57,13 @@ class MapSubmission extends Model
     public function format(): BelongsTo
     {
         return $this->belongsTo(Format::class);
+    }
+
+    /**
+     * Get the map list meta this submission was accepted for (if any).
+     */
+    public function acceptedMeta(): BelongsTo
+    {
+        return $this->belongsTo(MapListMeta::class, 'accepted_meta_id', 'id');
     }
 }

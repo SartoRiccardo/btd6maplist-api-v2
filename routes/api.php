@@ -58,9 +58,16 @@ Route::prefix('maps')
         Route::get('/', 'index');
         Route::get('/{id}', 'show');
 
+        // Map submissions (public index and show)
+        Route::get('/submissions', 'indexSubmissions');
+        Route::get('/submissions/{id}', 'showSubmission');
+
         Route::middleware('discord.auth')
             ->group(function () {
-                Route::post('/submissions', 'submit');
+                // Map submissions (authenticated)
+                Route::post('/submissions', 'storeSubmission');
+                Route::delete('/submissions/{id}', 'destroySubmission');
+                Route::put('/submissions/{id}/reject', 'rejectSubmission');
 
                 Route::post('/', 'save');
                 Route::put('/{id}', 'update');

@@ -1,0 +1,37 @@
+meta {
+  name: Submissions Create
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/api/maps/submissions
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+}
+
+params:form {
+  code: TKIEXYSQ
+  format_id: 1
+  proposed: 25
+  subm_notes: Great map for the list!
+  completion_proof: @file /path/to/screenshot.jpg
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const data = res.body;
+    if (data?.id) {
+      bru.setEnvVar("SUBMISSION_ID", data.id);
+      console.log("Submission created:", data.id);
+    }
+  }
+}
