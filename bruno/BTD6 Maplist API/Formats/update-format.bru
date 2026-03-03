@@ -1,0 +1,29 @@
+meta {
+  name: Update Format
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{BASE_URL}}/api/formats/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Maplist",
+    "hidden": false,
+    "run_submission_status": "open",
+    "map_submission_status": "open_chimps"
+  }
+}

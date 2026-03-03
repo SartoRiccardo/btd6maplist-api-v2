@@ -31,7 +31,7 @@ Route::prefix('formats')
     ->group(function () {
         Route::get('/', 'index');
         Route::get('/{id}', 'show');
-        Route::put('/', 'update')
+        Route::put('/{id}', 'update')
             ->middleware('discord.auth');
         Route::get('/{id}/leaderboard', 'leaderboard');
     });
