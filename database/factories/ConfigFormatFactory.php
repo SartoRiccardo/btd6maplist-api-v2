@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\Config;
 use App\Models\ConfigFormat;
+use App\Models\Format;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,8 +20,8 @@ class ConfigFormatFactory extends Factory
     public function definition(): array
     {
         return [
-            'config_name' => fake()->word(),
-            'format_id' => fake()->numberBetween(1, 100),
+            'config_name' => Config::factory(),
+            'format_id' => Format::factory(),
         ];
     }
 }
