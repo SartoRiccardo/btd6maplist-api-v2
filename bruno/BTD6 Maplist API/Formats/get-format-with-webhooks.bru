@@ -1,0 +1,23 @@
+meta {
+  name: Get Format with Webhooks
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{BASE_URL}}/api/formats/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+}
+
+params:query {
+  include: webhooks
+}

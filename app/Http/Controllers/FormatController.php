@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Format\IndexFormatRequest;
 use App\Http\Requests\Format\LeaderboardRequest;
+use App\Http\Requests\Format\UpdateFormatRequest;
 use App\Models\Format;
 use App\Models\User;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
@@ -55,14 +56,81 @@ class FormatController
         ]);
     }
 
-    public function show($id)
+    /**
+     * Get a format by ID.
+     *
+     * @OA\Get(
+     *     path="/formats/{id}",
+     *     summary="Get format by ID",
+     *     description="Returns format details. Sensitive fields (webhooks, emoji) are hidden by default. Use ?include=webhooks to reveal them (requires edit:config permission).",
+     *     tags={"Formats"},
+     *     @OA\Parameter(name="id", in="path", required=true, description="Format ID", @OA\Schema(type="integer", example=1)),
+     *     @OA\Parameter(name="include", in="query", required=false, @OA\Schema(type="string", enum={"webhooks"})),
+     *     @OA\Response(response=200, description="Format data", @OA\JsonContent(ref="#/components/schemas/Format")),
+     *     @OA\Response(response=403, description="Missing edit:config permission for webhooks"),
+     *     @OA\Response(response=404, description="Format not found"),
+     *     @OA\Response(response=401, description="Authentication required for ?include=webhooks")
+     * )
+     */
+    public function show($id, Request $request)
     {
-        return response()->json(['message' => 'Not Implemented'], 501);
+        $validated = $request->validate([
+            'include' => ['nullable', 'string', 'in:webhooks'],
+        ]);
+
+        $format = Format::find($id);
+        if (!$format) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $include = $validated['include'] ?? null;
+        if ($include === 'webhooks') {
+            $user = auth()->guard('discord')->user();
+            if (!$user) {
+                return response()->json(['message' => 'Unauthorized - Authentication required.'], 401);
+            }
+            if (!$user->hasPermission('edit:config', $format->id)) {
+                return response()->json(['message' => 'Forbidden - Missing edit:config permission for this format.'], 403);
+            }
+            return response()->json($format->toFullArray());
+        }
+
+        return response()->json($format->toArray());
     }
 
-    public function update(Request $request)
+    /**
+     * Update a format.
+     *
+     * @OA\Put(
+     *     path="/formats/{id}",
+     *     summary="Update format",
+     *     description="Updates format configuration. Requires edit:config permission for the format.",
+     *     tags={"Formats"},
+     *     security={{"discordAuth":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, description="Format ID", @OA\Schema(type="integer", example=1)),
+     *     @OA\RequestBody(@OA\JsonContent(ref="#/components/schemas/UpdateFormatRequest")),
+     *     @OA\Response(response=204, description="Format updated successfully"),
+     *     @OA\Response(response=401, description="Authentication required"),
+     *     @OA\Response(response=403, description="Missing edit:config permission"),
+     *     @OA\Response(response=404, description="Format not found"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function update($id, UpdateFormatRequest $request)
     {
-        return response()->json(['message' => 'Not Implemented'], 501);
+        $user = auth()->guard('discord')->user();
+        $format = Format::find($id);
+        if (!$format) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        if (!$user->hasPermission('edit:config', $format->id)) {
+            return response()->json(['message' => 'Forbidden - Missing edit:config permission for this format.'], 403);
+        }
+
+        $format->update($request->validated());
+
+        return response()->noContent();
     }
 
     /**

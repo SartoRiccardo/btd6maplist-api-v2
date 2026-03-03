@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Casts\MapSubmissionStatusCast;
+use App\Casts\RunSubmissionStatusCast;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -35,6 +37,8 @@ class Format extends Model
         'id' => 'integer',
         'hidden' => 'boolean',
         'proposed_difficulties' => 'array',
+        'run_submission_status' => RunSubmissionStatusCast::class,
+        'map_submission_status' => MapSubmissionStatusCast::class,
     ];
 
     public function configFormats()
