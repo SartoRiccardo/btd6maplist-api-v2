@@ -59,7 +59,7 @@ class ConfigFactory extends Factory
     {
         return $this->afterCreating(function (Config $config) use ($formatIds) {
             foreach ($formatIds as $formatId) {
-                ConfigFormat::create([
+                ConfigFormat::factory()->create([
                     'config_name' => $config->name,
                     'format_id' => $formatId,
                 ]);

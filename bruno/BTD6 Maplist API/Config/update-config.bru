@@ -1,0 +1,27 @@
+meta {
+  name: Update Config
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{BASE_URL}}/api/config
+  body: json
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+body:json {
+  {
+    "map_count": 100,
+    "points_multiplier": 1.5
+  }
+}
