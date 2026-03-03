@@ -1,0 +1,26 @@
+meta {
+  name: Update User
+  type: http
+  seq: 1
+}
+
+put {
+  url: {{BASE_URL}}/api/users/@me
+  auth: bearer
+  body: json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+}
+
+body:json {
+  {
+    "name": "TestUser",
+    "nk_oak": null
+  }
+}

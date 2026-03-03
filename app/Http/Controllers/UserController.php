@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\AchievementRole;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UserController
 {
@@ -93,19 +96,241 @@ class UserController
         return response()->json($response);
     }
 
-    public function update(Request $request, $id)
+    /**
+     * @OA\Put(
+     *     path="/users/{id}",
+     *     summary="Update user profile",
+     *     description="Updates a user's profile information. The {id} parameter can be the literal string '@me' to update the authenticated user's profile, or a numeric Discord ID matching the authenticated user's ID. Currently, updating other users returns 501 Not Implemented. Requires the edit:self permission.",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="User ID or '@me' for the authenticated user",
+     *         @OA\Schema(type="string", example="@me")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(ref="#/components/schemas/UpdateUserRequest")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="User updated successfully",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(ref="#/components/schemas/User")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - No valid Discord token provided"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - User does not have edit:self permission"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=501,
+     *         description="Not Implemented - Updating other users is not yet supported"
+     *     )
+     * )
+     */
+    public function update(UpdateUserRequest $request, $id)
     {
-        return response()->json(['message' => 'Not Implemented'], 501);
+        $user = auth()->guard('discord')->user();
+
+        // Permission check
+        if (!$user->hasPermission('edit:self', null)) {
+            return response()->json([
+                'message' => 'Forbidden - You do not have permission to edit user profiles.',
+            ], 403);
+        }
+
+        // Resolve @me alias
+        if ($id === '@me') {
+            $id = $user->discord_id;
+        }
+
+        // Temporary constraint: Only allow updating self
+        if ($id !== $user->discord_id) {
+            return response()->json(['message' => 'Not Implemented'], 501);
+        }
+
+        // Find target user (should be self at this point)
+        $targetUser = User::find($id);
+        if (!$targetUser) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        // Case-insensitive name uniqueness check (after @me resolution)
+        $validatedData = $request->validated();
+        if (isset($validatedData['name'])) {
+            $existingUser = User::whereRaw('LOWER(name) = LOWER(?)', [$validatedData['name']])
+                ->where('discord_id', '!=', $id)
+                ->first();
+
+            if ($existingUser) {
+                return response()->json([
+                    'errors' => [
+                        'name' => ['The name has already been taken.'],
+                    ],
+                ], 422);
+            }
+        }
+
+        // Update user with validated data
+        $targetUser->update($validatedData);
+
+        return response()->json($targetUser);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/users/{id}/ban",
+     *     summary="Ban a user",
+     *     description="Bans a user by setting is_banned to true and removing all roles marked as assign_on_create. Requires the ban:user permission at the GLOBAL level (format-independent). This operation is idempotent - calling it multiple times on the same user will not cause errors.",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="The Discord ID of the user to ban",
+     *         @OA\Schema(type="string", example="123456789012345678")
+     *     ),
+     *     @OA\Response(
+     *         response=204,
+     *         description="User successfully banned"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - No valid Discord token provided"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - User does not have global ban:user permission"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found"
+     *     )
+     * )
+     */
     public function banUser(Request $request, $id)
     {
-        return response()->json(['message' => 'Not Implemented'], 501);
+        $user = auth()->guard('discord')->user();
+
+        // Permission check: Must have ban:user at GLOBAL level
+        if (!$user->hasPermission('ban:user', null)) {
+            return response()->json([
+                'message' => 'Forbidden - You do not have permission to ban users.',
+            ], 403);
+        }
+
+        // Find target user
+        $targetUser = User::find($id);
+        if (!$targetUser) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        return DB::transaction(function () use ($targetUser) {
+            // Idempotent: Only set is_banned if not already banned
+            if (!$targetUser->is_banned) {
+                $targetUser->is_banned = true;
+                $targetUser->save();
+            }
+
+            // Remove all assign_on_create roles from user
+            $assignOnCreateRoleIds = Role::where('assign_on_create', true)
+                ->pluck('id');
+
+            if ($assignOnCreateRoleIds->isNotEmpty()) {
+                $targetUser->roles()->detach($assignOnCreateRoleIds);
+            }
+
+            return response()->noContent();
+        });
     }
 
+    /**
+     * @OA\Put(
+     *     path="/users/{id}/unban",
+     *     summary="Unban a user",
+     *     description="Unbans a user by setting is_banned to false and restoring all roles marked as assign_on_create. Requires the ban:user permission at the GLOBAL level (format-independent). This operation is idempotent - calling it multiple times will not duplicate roles.",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="The Discord ID of the user to unban",
+     *         @OA\Schema(type="string", example="123456789012345678")
+     *     ),
+     *     @OA\Response(
+     *         response=204,
+     *         description="User successfully unbanned"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - No valid Discord token provided"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - User does not have global ban:user permission"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found"
+     *     )
+     * )
+     */
     public function unbanUser(Request $request, $id)
     {
-        return response()->json(['message' => 'Not Implemented'], 501);
+        $user = auth()->guard('discord')->user();
+
+        // Permission check: Must have ban:user at GLOBAL level
+        if (!$user->hasPermission('ban:user', null)) {
+            return response()->json([
+                'message' => 'Forbidden - You do not have permission to unban users.',
+            ], 403);
+        }
+
+        // Find target user
+        $targetUser = User::find($id);
+        if (!$targetUser) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        return DB::transaction(function () use ($targetUser) {
+            // Idempotent: Only set is_banned if currently banned
+            if ($targetUser->is_banned) {
+                $targetUser->is_banned = false;
+                $targetUser->save();
+            }
+
+            // Restore all assign_on_create roles
+            $assignOnCreateRoleIds = Role::where('assign_on_create', true)
+                ->pluck('id');
+
+            if ($assignOnCreateRoleIds->isNotEmpty()) {
+                // syncWithoutDetaching: adds roles without removing existing ones
+                $targetUser->roles()->syncWithoutDetaching($assignOnCreateRoleIds);
+            }
+
+            return response()->noContent();
+        });
     }
 
     public function readRules(Request $request)

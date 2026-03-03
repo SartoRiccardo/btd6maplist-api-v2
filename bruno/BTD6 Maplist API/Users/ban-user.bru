@@ -1,0 +1,18 @@
+meta {
+  name: Ban User
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{BASE_URL}}/api/users/123456789012345678/ban
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+}
