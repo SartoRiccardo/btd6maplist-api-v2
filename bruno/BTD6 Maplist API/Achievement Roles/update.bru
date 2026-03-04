@@ -1,0 +1,38 @@
+meta {
+  name: Update
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{BASE_URL}}/api/roles/achievement/{{ACHIEVEMENT_ROLE_ID}}
+  body: json
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+body:json {
+  {
+    "lb_format": 1,
+    "lb_type": "black_border",
+    "threshold": 15,
+    "for_first": false,
+    "tooltip_description": "Updated description",
+    "name": "Updated Role Name",
+    "clr_border": 123456,
+    "clr_inner": 789012,
+    "discord_roles": [
+      {
+        "guild_id": "123456789",
+        "role_id": "999999999"
+      }
+    ]
+  }
+}

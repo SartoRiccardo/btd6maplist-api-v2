@@ -1,0 +1,15 @@
+meta {
+  name: Show
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/api/roles/achievement/{{ACHIEVEMENT_ROLE_ID}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
