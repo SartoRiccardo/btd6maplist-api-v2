@@ -16,9 +16,7 @@ class DiscordRole extends Model
     protected $keyType = 'bigint';
 
     protected $fillable = [
-        'ar_lb_format',
-        'ar_lb_type',
-        'ar_threshold',
+        'achievement_role_id',
         'guild_id',
         'role_id',
     ];
@@ -29,9 +27,7 @@ class DiscordRole extends Model
     ];
 
     protected $hidden = [
-        'ar_lb_format',
-        'ar_lb_type',
-        'ar_threshold',
+        'achievement_role_id',
     ];
 
     /**
@@ -39,6 +35,6 @@ class DiscordRole extends Model
      */
     public function achievementRole()
     {
-        return $this->belongsTo(AchievementRole::class, 'ar_lb_format', 'lb_format');
+        return $this->belongsTo(AchievementRole::class);
     }
 }

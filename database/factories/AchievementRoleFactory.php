@@ -17,7 +17,7 @@ class AchievementRoleFactory extends Factory
         return [
             'lb_format' => 1,
             'lb_type' => 'points',
-            'threshold' => fake()->numberBetween(1, 1000),
+            'threshold' => fake()->unique()->randomNumber(3, true), // Unique threshold
             'for_first' => false,
             'tooltip_description' => fake()->optional()->sentence(),
             'name' => fake()->words(2, true),
