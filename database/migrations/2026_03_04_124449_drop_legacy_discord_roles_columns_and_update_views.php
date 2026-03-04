@@ -45,11 +45,12 @@ return new class extends Migration {
                 ON ulr.achievement_role_id = dr.achievement_role_id
         ');
 
-        // Recreate the materialized view
+        // Recreate the materialized view WITH NO DATA (refreshed in ConfigSeeder)
         DB::statement('
             CREATE MATERIALIZED VIEW snapshot_lb_linked_roles AS
             SELECT user_id, guild_id, role_id
             FROM lb_linked_roles
+            WITH NO DATA
         ');
     }
 

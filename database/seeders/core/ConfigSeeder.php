@@ -66,5 +66,6 @@ class ConfigSeeder extends Seeder
         }
 
         DB::statement("REFRESH MATERIALIZED VIEW listmap_points");
+        DB::statement("REFRESH MATERIALIZED VIEW snapshot_lb_linked_roles");
     }
 }

@@ -12,11 +12,6 @@ return new class extends Migration
         // Get the max ID to set sequence correctly
         $maxId = DB::table('achievement_roles')->max('id') ?? 1;
 
-        // Create sequence starting after max ID
-        DB::statement("CREATE SEQUENCE achievement_roles_id_seq START WITH " . ($maxId + 1));
-        DB::statement("ALTER TABLE achievement_roles ALTER COLUMN id SET DEFAULT nextval('achievement_roles_id_seq')");
-        DB::statement("SELECT setval('achievement_roles_id_seq', {$maxId}, true)");
-
         Schema::table('achievement_roles', function (Blueprint $table) {
             // Make ID NOT NULL
             $table->bigInteger('id')->nullable(false)->change();
@@ -27,6 +22,11 @@ return new class extends Migration
             // Add unique constraint on composite columns
             $table->unique(['lb_format', 'lb_type', 'threshold']);
         });
+
+        // Create sequence owned by achievement_roles.id so it drops with the table
+        DB::statement("CREATE SEQUENCE achievement_roles_id_seq OWNED BY achievement_roles.id START WITH " . ($maxId + 1));
+        DB::statement("ALTER TABLE achievement_roles ALTER COLUMN id SET DEFAULT nextval('achievement_roles_id_seq')");
+        DB::statement("SELECT setval('achievement_roles_id_seq', {$maxId}, true)");
     }
 
     public function down(): void

@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AchievementRole\IndexAchievementRoleRequest;
 use App\Http\Requests\AchievementRole\StoreAchievementRoleRequest;
-use App\Http\Requests\AchievementRole\UpdateAchievementRoleRequest;
 use App\Models\AchievementRole;
+use App\Services\AchievementRoleService;
 use Illuminate\Support\Facades\DB;
 
 class AchievementRoleController extends Controller
 {
+    public function __construct(
+        private AchievementRoleService $achievementRoleService
+    ) {
+    }
     /**
      * Get paginated list of achievement roles.
      *
@@ -110,10 +114,19 @@ class AchievementRoleController extends Controller
     {
         $user = auth()->guard('discord')->user();
         $lbFormat = $request->input('lb_format');
+        $lbType = $request->input('lb_type');
+        $threshold = $request->input('threshold');
+        $forFirst = $request->input('for_first');
+        $discordRoles = $request->input('discord_roles', []);
 
         if (!$user->hasPermission('edit:achievement_roles', $lbFormat)) {
             return response()->json(['message' => 'Forbidden - Missing edit:achievement_roles permission for this format.'], 403);
         }
+
+        // Service validates composite uniqueness and for_first
+        $this->achievementRoleService->validateCompositeUniqueness($lbFormat, $lbType, $threshold);
+        $this->achievementRoleService->validateForFirstUniqueness($lbFormat, $lbType);
+        $this->achievementRoleService->validateRoleIdsNotInUse($discordRoles);
 
         $role = DB::transaction(function () use ($request) {
             $role = AchievementRole::create($request->except('discord_roles'));
@@ -138,7 +151,7 @@ class AchievementRoleController extends Controller
      *     tags={"Achievement Roles"},
      *     security={{"discordAuth":{}}},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer", description="Achievement role ID")),
-     *     @OA\RequestBody(@OA\JsonContent(ref="#/components/schemas/UpdateAchievementRoleRequest")),
+     *     @OA\RequestBody(@OA\JsonContent(ref="#/components/schemas/StoreAchievementRoleRequest")),
      *     @OA\Response(
      *         response=200,
      *         description="Achievement role updated",
@@ -150,7 +163,7 @@ class AchievementRoleController extends Controller
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function update($id, UpdateAchievementRoleRequest $request)
+    public function update($id, StoreAchievementRoleRequest $request)
     {
         $user = auth()->guard('discord')->user();
         $role = AchievementRole::find($id);
@@ -163,11 +176,23 @@ class AchievementRoleController extends Controller
             return response()->json(['message' => 'Forbidden - Missing edit:achievement_roles permission for this format.'], 403);
         }
 
+        $lbFormat = $request->input('lb_format');
+        $lbType = $request->input('lb_type');
+        $threshold = $request->input('threshold');
+        $forFirst = $request->input('for_first');
+        $discordRoles = $request->input('discord_roles', []);
+
+        // Service validates composite uniqueness and for_first (excluding current role)
+        $this->achievementRoleService->validateCompositeUniqueness($lbFormat, $lbType, $threshold, $id);
+        $this->achievementRoleService->validateForFirstUniqueness($lbFormat, $lbType, $id);
+        $this->achievementRoleService->validateRoleIdsNotInUse($discordRoles, $id);
+
         $role = DB::transaction(function () use ($request, $role) {
             $role->update($request->except('discord_roles'));
 
             // Replace discord_roles completely
             $role->discordRoles()->delete();
+
             if (!empty($request->input('discord_roles'))) {
                 $role->discordRoles()->createMany($request->input('discord_roles'));
             }
