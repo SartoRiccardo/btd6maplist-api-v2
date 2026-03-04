@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\AchievementRole;
+use App\Models\Format;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -15,7 +16,7 @@ class AchievementRoleFactory extends Factory
     public function definition(): array
     {
         return [
-            'lb_format' => 1,
+            'lb_format' => Format::factory(),
             'lb_type' => 'points',
             'threshold' => fake()->unique()->randomNumber(3, true), // Unique threshold
             'for_first' => false,
@@ -28,7 +29,7 @@ class AchievementRoleFactory extends Factory
 
     public function firstPlace(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'for_first' => true,
             'threshold' => 0,
         ]);

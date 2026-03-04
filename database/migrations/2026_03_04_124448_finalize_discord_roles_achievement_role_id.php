@@ -12,8 +12,7 @@ return new class extends Migration
             // Make NOT NULL
             $table->foreignId('achievement_role_id')->nullable(false)->change();
 
-            // Drop the temp FK and recreate with CASCADE
-            $table->dropForeign(['achievement_role_id']);
+            // Create FK with CASCADE
             $table->foreign('achievement_role_id')
                 ->references('id')
                 ->on('achievement_roles')

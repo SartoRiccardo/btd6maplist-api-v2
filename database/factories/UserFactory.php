@@ -25,7 +25,7 @@ class UserFactory extends Factory
     {
         return [
             'discord_id' => fake()->unique()->numerify('1#################'),
-            'name' => fake()->userName(),
+            'name' => fake()->userName() . fake()->randomLetter() . fake()->randomLetter() . fake()->randomNumber(3, true),
             'nk_oak' => null,
             'has_seen_popup' => false,
             'is_banned' => false,

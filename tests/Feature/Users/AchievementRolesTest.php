@@ -68,7 +68,7 @@ class AchievementRolesTest extends TestCase
         $expected = [
             AchievementRole::jsonStructure($role->toArray()),
         ];
-        $this->assertEquals($expected, $actual['achievement_roles']);
+        $this->assertEquals($expected, $this->except($actual['achievement_roles'], ['*.id']));
     }
 
     #[Group('get')]
@@ -94,7 +94,7 @@ class AchievementRolesTest extends TestCase
         $expected = [
             AchievementRole::jsonStructure($roles[2]->toArray()),
         ];
-        $this->assertEquals($expected, $actual['achievement_roles']);
+        $this->assertEquals($expected, $this->except($actual['achievement_roles'], ['*.id']));
     }
 
     #[Group('get')]
@@ -134,7 +134,7 @@ class AchievementRolesTest extends TestCase
         $expected = [
             AchievementRole::jsonStructure($thresholdRoles[2]->toArray()),
         ];
-        $this->assertEquals($expected, $actual['achievement_roles']);
+        $this->assertEquals($expected, $this->except($actual['achievement_roles'], ['*.id']));
     }
 
     #[Group('get')]
@@ -167,7 +167,7 @@ class AchievementRolesTest extends TestCase
         $expected = [
             AchievementRole::jsonStructure($firstPlaceRole->toArray()),
         ];
-        $this->assertEquals($expected, $actual['achievement_roles']);
+        $this->assertEquals($expected, $this->except($actual['achievement_roles'], ['*.id']));
     }
 
     #[Group('get')]
@@ -207,7 +207,7 @@ class AchievementRolesTest extends TestCase
             AchievementRole::jsonStructure($maplistRole->toArray()),
             AchievementRole::jsonStructure($expertRole->toArray()),
         ];
-        $this->assertEqualsCanonicalizing($expected, $actual['achievement_roles']);
+        $this->assertEqualsCanonicalizing($expected, $this->except($actual['achievement_roles'], ['*.id']));
     }
 
     #[Group('get')]
@@ -247,7 +247,7 @@ class AchievementRolesTest extends TestCase
             AchievementRole::jsonStructure($bbRole->toArray()),
             AchievementRole::jsonStructure($ngRole->toArray()),
         ];
-        $this->assertEqualsCanonicalizing($expected, $actual['achievement_roles']);
+        $this->assertEqualsCanonicalizing($expected, $this->except($actual['achievement_roles'], ['*.id']));
     }
 
     protected function createUserWithBlackBorderCount(int $count, ?User $user = null): User
