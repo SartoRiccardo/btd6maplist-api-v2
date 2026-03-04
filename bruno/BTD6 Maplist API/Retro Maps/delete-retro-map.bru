@@ -1,0 +1,19 @@
+meta {
+  name: Delete Retro Map
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{BASE_URL}}/api/maps/retro/{{retro_map_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+}

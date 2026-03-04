@@ -1,0 +1,22 @@
+meta {
+  name: Retro Maps
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/api/maps/retro
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+params:query {
+  game_id:
+  category_id:
+  page: 1
+  per_page: 15
+}

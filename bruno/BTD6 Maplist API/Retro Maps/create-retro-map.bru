@@ -1,0 +1,29 @@
+meta {
+  name: Create Retro Map
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/api/maps/retro
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Test Retro Map",
+    "sort_order": 1,
+    "preview_url": "https://example.com/preview.png",
+    "retro_game_id": 1
+  }
+}

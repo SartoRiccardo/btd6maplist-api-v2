@@ -1,0 +1,27 @@
+meta {
+  name: Update Retro Map
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{BASE_URL}}/api/maps/retro/{{retro_map_id}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Updated Retro Map Name",
+    "sort_order": 2
+  }
+}
