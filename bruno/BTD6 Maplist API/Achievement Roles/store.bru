@@ -1,0 +1,38 @@
+meta {
+  name: Store
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/api/roles/achievement
+  body: json
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+body:json {
+  {
+    "lb_format": 1,
+    "lb_type": "black_border",
+    "threshold": 10,
+    "for_first": false,
+    "tooltip_description": null,
+    "name": "Test Achievement Role",
+    "clr_border": 0,
+    "clr_inner": 0,
+    "discord_roles": [
+      {
+        "guild_id": "123456789",
+        "role_id": "987654321"
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Destroy
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{BASE_URL}}/api/roles/achievement/{{ACHIEVEMENT_ROLE_ID}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
