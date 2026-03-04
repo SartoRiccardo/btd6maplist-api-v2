@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
  * @OA\Schema(
  *     schema="AchievementRole",
  *     type="object",
+ *     @OA\Property(property="id", type="integer", description="The achievement role ID"),
  *     @OA\Property(property="lb_format", type="integer", description="The leaderboard format ID"),
  *     @OA\Property(property="lb_type", type="string", description="The leaderboard type"),
  *     @OA\Property(property="threshold", type="integer", description="The score threshold required"),
@@ -21,6 +22,26 @@ use Illuminate\Support\Facades\DB;
  *     @OA\Property(property="clr_inner", type="integer", description="Inner color")
  * )
  */
+
+/**
+ * @OA\Schema(
+ *     schema="AchievementRoleWithDiscordRoles",
+ *     allOf={
+ *         @OA\Schema(ref="#/components/schemas/AchievementRole"),
+ *         @OA\Schema(
+ *             @OA\Property(
+ *                 property="discord_roles",
+ *                 type="array",
+ *                 @OA\Items(
+ *                     type="object",
+ *                     @OA\Property(property="guild_id", type="string", description="Discord guild ID"),
+ *                     @OA\Property(property="role_id", type="string", description="Discord role ID")
+ *                 )
+ *             )
+ *         )
+ *     }
+ * )
+ */
 class AchievementRole extends Model
 {
     use HasFactory, TestableStructure;
@@ -29,11 +50,12 @@ class AchievementRole extends Model
 
     public $timestamps = false;
 
-    protected $primaryKey = ['lb_format', 'lb_type', 'threshold'];
+    protected $primaryKey = 'id';
 
-    public $incrementing = false;
+    public $incrementing = true;
 
     protected $fillable = [
+        'id',
         'lb_format',
         'lb_type',
         'threshold',
@@ -51,6 +73,28 @@ class AchievementRole extends Model
         'clr_border' => 'integer',
         'clr_inner' => 'integer',
     ];
+
+    /**
+     * Get the Discord roles associated with this achievement role.
+     */
+    public function discordRoles()
+    {
+        return $this->hasMany(DiscordRole::class);
+    }
+
+    /**
+     * Scope to filter achievement roles by format and type.
+     */
+    public function scopeWithFilters($query, ?int $formatId, ?string $type)
+    {
+        if ($formatId) {
+            $query->where('lb_format', $formatId);
+        }
+        if ($type) {
+            $query->where('lb_type', $type);
+        }
+        return $query;
+    }
 
     /**
      * Get achievement roles a user qualifies for based on their leaderboard positions.

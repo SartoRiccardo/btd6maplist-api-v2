@@ -16,20 +16,16 @@ class DiscordRoleFactory extends Factory
     public function definition(): array
     {
         return [
-            'ar_lb_format' => 1,
-            'ar_lb_type' => 'points',
-            'ar_threshold' => fake()->numberBetween(1, 1000),
+            'achievement_role_id' => AchievementRole::factory(),
             'guild_id' => fake()->unique()->randomNumber(5, true) . str_repeat('0', 12),
             'role_id' => fake()->unique()->randomNumber(5, true) . str_repeat('0', 12),
         ];
     }
 
-    public function forAchievement(AchievementRole $role): self
+    public function forAchievementRole(AchievementRole $role): self
     {
         return $this->state(fn(array $attributes) => [
-            'ar_lb_format' => $role->lb_format,
-            'ar_lb_type' => $role->lb_type,
-            'ar_threshold' => $role->threshold,
+            'achievement_role_id' => $role->id,
         ]);
     }
 }
