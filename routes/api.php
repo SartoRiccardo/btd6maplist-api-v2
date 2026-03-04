@@ -99,10 +99,13 @@ Route::prefix('roles/achievement')
     ->controller(AchievementRoleController::class)
     ->group(function () {
         Route::get('/', 'index');
+        Route::get('/{id}', 'show');
 
         Route::middleware('discord.auth')
             ->group(function () {
-                Route::put('/', 'update');
+                Route::post('/', 'store');
+                Route::put('/{id}', 'update');
+                Route::delete('/{id}', 'destroy');
             });
     });
 
