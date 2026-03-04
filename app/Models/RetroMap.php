@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\TestableStructure;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @OA\Schema(
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RetroMap extends Model
 {
-    use HasFactory, TestableStructure;
+    use HasFactory, SoftDeletes, TestableStructure;
 
     public $timestamps = false;
 
@@ -30,6 +31,7 @@ class RetroMap extends Model
         'sort_order',
         'preview_url',
         'retro_game_id',
+        'deleted_at',
     ];
 
     /**
