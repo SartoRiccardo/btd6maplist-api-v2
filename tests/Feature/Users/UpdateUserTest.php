@@ -4,6 +4,7 @@ namespace Tests\Feature\Users;
 
 use App\Models\User;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
+use Illuminate\Support\Facades\Http;
 use Tests\Traits\TestsDiscordAuthMiddleware;
 use Tests\TestCase;
 
@@ -206,6 +207,10 @@ class UpdateUserTest extends TestCase
 
     public function test_update_user_requires_name(): void
     {
+        Http::fake([
+            "https://data.ninjakiwi.com/btd6/users/some_oak*" => Http::response(null, 400),
+        ]);
+
         $user = $this->createUserWithPermissions([null => ['edit:self']]);
 
         $this->actingAs($user, 'discord')
