@@ -65,6 +65,7 @@ class RetroMap extends Model
     protected static function strictFields(): array
     {
         return [
+            'deleted_at',
             'id',
             'name',
             'sort_order',
