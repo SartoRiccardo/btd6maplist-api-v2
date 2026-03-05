@@ -1,0 +1,21 @@
+meta {
+  name: Search Maps Only
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{BASE_URL}}/api/search
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+params:query {
+  q: infernal
+  entities: maps
+  limit: 5
+}
