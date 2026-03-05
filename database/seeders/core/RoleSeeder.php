@@ -88,6 +88,9 @@ class RoleSeeder extends Seeder
                 'edit:self',
                 'ban:user',
                 'create:completion_submission',
+                'create:retro_map',
+                'edit:retro_map',
+                'delete:retro_map',
             ],
         ],
         self::ROLES['MAPLIST_OWNER'] => [
@@ -218,6 +221,9 @@ class RoleSeeder extends Seeder
                 'delete:map',
                 'create:user',
                 'ban:user',
+                'create:retro_map',
+                'edit:retro_map',
+                'delete:retro_map',
             ],
         ],
         self::ROLES['NOSTALGIA_CURATOR'] => [
@@ -227,6 +233,9 @@ class RoleSeeder extends Seeder
                 'delete:map',
                 'create:user',
                 'ban:user',
+                'create:retro_map',
+                'edit:retro_map',
+                'delete:retro_map',
             ],
         ],
         self::ROLES['NOSTALGIA_VERIFIER'] => [
