@@ -32,18 +32,21 @@ class RetroMapService
         $direction = match (true) {
             $oldPosition === null => 1, // Insert: shift up
             $newPosition === null => -1, // Delete: shift down
-            default => $newPosition > $oldPosition ? 1 : -1, // Update: direction based on movement
+            $newPosition < $oldPosition => 1, // Moving up: shift others up (to make room at top)
+            default => -1, // Moving down: shift others down (to fill gap left behind)
         };
 
         $from = match (true) {
             $oldPosition === null => $newPosition, // Insert: from new position onwards
             $newPosition === null => $oldPosition + 1, // Delete: from old position + 1 onwards
-            default => min($oldPosition, $newPosition), // Update: between the two positions
+            $newPosition < $oldPosition => $newPosition, // Moving up: from new position onwards (to oldPosition - 1)
+            default => $oldPosition + 1, // Moving down: from oldPosition + 1 onwards (to newPosition)
         };
 
         $to = match (true) {
             $oldPosition === null, $newPosition === null => null, // Insert/Delete: no upper bound
-            default => max($oldPosition, $newPosition), // Update: between the two positions
+            $newPosition < $oldPosition => $oldPosition - 1, // Moving up: up to oldPosition - 1
+            default => $newPosition, // Moving down: up to newPosition
         };
 
         $ignoreClause = $ignoreId !== null ? 'AND id != ?' : '';
