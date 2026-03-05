@@ -15,9 +15,9 @@ class RetroGameFactory extends Factory
     public function definition(): array
     {
         return [
-            'game_id' => fake()->numberBetween(1, 10),
-            'category_id' => fake()->numberBetween(1, 5),
-            'subcategory_id' => fake()->numberBetween(1, 3),
+            'game_id' => fake()->unique()->numberBetween(1, 10000),
+            'category_id' => fake()->unique()->numberBetween(1, 10000),
+            'subcategory_id' => fake()->unique()->numberBetween(1, 10000),
             'game_name' => fake()->randomElement(['BTD6', 'BTD5', 'BTD4']),
             'category_name' => fake()->randomElement(['Beginner', 'Intermediate', 'Advanced', 'Expert']),
             'subcategory_name' => fake()->optional()->randomElement(['Easy', 'Medium', 'Hard']),

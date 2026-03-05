@@ -1,0 +1,15 @@
+meta {
+  name: Get Retro Map
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/api/maps/retro/{{retro_map_id}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
