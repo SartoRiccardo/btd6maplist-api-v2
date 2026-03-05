@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\FormatController;
 use App\Http\Controllers\RetroMapController;
+use App\Http\Controllers\RetroGameController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\CompletionController;
 use App\Http\Controllers\DiscordUtilitiesController;
@@ -49,6 +50,13 @@ Route::prefix('maps/retro')
                 Route::put('/{id}', 'update');
                 Route::delete('/{id}', 'destroy');
             });
+    });
+
+// Retro Game endpoints
+Route::prefix('retro-games')
+    ->controller(RetroGameController::class)
+    ->group(function () {
+        Route::get('/', 'index');
     });
 
 // Map endpoints
