@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\MapSubmissions;
 
+use App\Models\Format;
 use App\Models\MapSubmission;
+use App\Models\User;
 use Tests\TestCase;
 use PHPUnit\Metadata\Group;
 
@@ -19,6 +21,14 @@ class ShowTest extends TestCase
             ->json();
 
         $expected = MapSubmission::jsonStructure($submission->toArray());
+        $expected['submitter'] = [
+            'discord_id' => $submission->submitter->discord_id,
+            'name' => $submission->submitter->name,
+            'is_banned' => $submission->submitter->is_banned,
+        ];
+        $expected['rejecter'] = null;
+        $expected['format'] = Format::jsonStructure($submission->format->toArray());
+        $expected['accepted_meta'] = null;
 
         $this->assertEquals($expected, $actual);
     }
@@ -66,7 +76,7 @@ class ShowTest extends TestCase
     #[Group('map_submissions')]
     public function test_show_includes_submitter_relationship(): void
     {
-        $submission = MapSubmission::factory()->forUser()->create();
+        $submission = MapSubmission::factory()->create();
 
         $actual = $this->getJson("/api/maps/submissions/{$submission->id}")
             ->assertStatus(200)

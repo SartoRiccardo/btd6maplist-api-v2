@@ -23,9 +23,9 @@ class StoreMapSubmissionRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:10', 'exists:maps,code'],
+            'code' => ['required', 'string', 'max:10'],
             'format_id' => ['required', 'integer', 'min:1', 'exists:formats,id'],
-            'proposed' => ['required', 'integer'],
+            'proposed' => ['required', 'integer', 'min:0'],
             'subm_notes' => ['nullable', 'string', 'max:5000'],
             'completion_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:10240'],
         ];
@@ -37,7 +37,6 @@ class StoreMapSubmissionRequest extends BaseRequest
     public function messages(): array
     {
         return [
-            'code.exists' => 'The specified map does not exist.',
             'format_id.exists' => 'The specified format does not exist.',
             'completion_proof.required' => 'A completion proof image is required.',
             'completion_proof.mimes' => 'The completion proof must be an image file (jpg, jpeg, png, gif, or webp).',

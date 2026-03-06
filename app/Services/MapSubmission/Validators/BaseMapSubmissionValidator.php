@@ -8,6 +8,7 @@ use App\Models\MapSubmission;
 use App\Models\User;
 use App\Models\MapListMeta;
 use App\Services\MapSubmission\SubmissionValidatorInterface;
+use App\Services\NinjaKiwi\NinjaKiwiApiClient;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -31,6 +32,7 @@ class BaseMapSubmissionValidator implements SubmissionValidatorInterface
         $this->validateNoPendingSubmission($user, $data);
         $this->validateMapNotInList($data['code']);
         $this->validateProposedValue($data['format_id'], $data['proposed']);
+        $this->validateMapExists($data['code']);
     }
 
     /**
@@ -47,6 +49,22 @@ class BaseMapSubmissionValidator implements SubmissionValidatorInterface
         if ($format->map_submission_status !== 'open') {
             throw ValidationException::withMessages([
                 'format_id' => "Map submissions are closed for this format.",
+            ]);
+        }
+    }
+
+    /**
+     * Validate that the map exists in Ninja Kiwi's database.
+     *
+     * @param string $mapCode
+     * @return void
+     * @throws ValidationException
+     */
+    protected function validateMapExists(string $mapCode): void
+    {
+        if (!NinjaKiwiApiClient::mapExists($mapCode)) {
+            throw ValidationException::withMessages([
+                'code' => "This map code does not exist.",
             ]);
         }
     }
@@ -104,11 +122,11 @@ class BaseMapSubmissionValidator implements SubmissionValidatorInterface
 
         // Only validate if format has proposed_difficulties configured
         if ($format->proposed_difficulties !== null) {
-            $difficulties = json_decode($format->proposed_difficulties, true);
+            $difficulties = $format->proposed_difficulties;
 
-            if (!is_array($difficulties) || !in_array($proposed, $difficulties, true)) {
+            if (!is_array($difficulties) || !isset($difficulties[$proposed])) {
                 throw ValidationException::withMessages([
-                    'proposed' => "The proposed value must be one of: " . implode(', ', $difficulties ?? []),
+                    'proposed' => "The proposed value must be one of: " . implode(', ', array_keys($difficulties)),
                 ]);
             }
         }

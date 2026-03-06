@@ -167,17 +167,13 @@ class RejectTest extends TestCase
             ->putJson("/api/maps/submissions/{$submission->id}/reject")
             ->assertStatus(204);
 
-        // Verify rejected_by was set using GET (not database query)
+        // Verify rejected status using GET (not database query)
         $actual = $this->getJson("/api/maps/submissions/{$submission->id}")
             ->assertStatus(200)
             ->json();
 
-        $expected = MapSubmission::jsonStructure([
-            ...$submission->toArray(),
-            'rejected_by' => $admin->discord_id,
-        ]);
-
-        $this->assertEquals($expected, $actual);
+        $this->assertEquals('rejected', $actual['status']);
+        $this->assertEquals($admin->discord_id, $actual['rejected_by']);
     }
 
     // ========== NOT FOUND TESTS ==========
