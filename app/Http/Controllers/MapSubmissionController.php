@@ -51,7 +51,7 @@ class MapSubmissionController extends Controller
         $include = $validated['include'] ?? [];
 
         // Build query
-        $query = MapSubmission::with(['submitter', 'rejecter', 'format', 'acceptedMeta']);
+        $query = MapSubmission::with(['submitter', 'rejecter', 'format']);
 
         // Apply filters
         if ($formatId) {

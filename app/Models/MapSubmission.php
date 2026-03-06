@@ -18,12 +18,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *     @OA\Property(property="rejected_by", type="string", nullable=true, example="987654321098765432"),
  *     @OA\Property(property="created_on", type="string", format="date-time", example="2026-03-05T12:00:00+00:00"),
  *     @OA\Property(property="completion_proof", type="string", example="map_submission_proofs/abc123.jpg"),
- *     @OA\Property(property="accepted_meta_id", type="integer", nullable=true, example=42),
  *     @OA\Property(property="status", type="string", enum={"pending", "accepted", "rejected"}, example="pending"),
  *     @OA\Property(property="submitter", ref="#/components/schemas/User"),
  *     @OA\Property(property="rejecter", ref="#/components/schemas/User"),
- *     @OA\Property(property="format", ref="#/components/schemas/Format"),
- *     @OA\Property(property="acceptedMeta", ref="#/components/schemas/MapListMeta")
+ *     @OA\Property(property="format", ref="#/components/schemas/Format")
  * )
  */
 class MapSubmission extends Model
@@ -49,6 +47,7 @@ class MapSubmission extends Model
     protected $hidden = [
         'wh_data',
         'wh_msg_id',
+        'accepted_meta_id',
     ];
 
     protected $appends = [
@@ -151,7 +150,6 @@ class MapSubmission extends Model
             'rejected_by' => $data['rejected_by'] ?? null,
             'created_on' => $data['created_on'] ?? null,
             'completion_proof' => $data['completion_proof'] ?? null,
-            'accepted_meta_id' => $data['accepted_meta_id'] ?? null,
             'status' => $data['status'],
         ];
     }
