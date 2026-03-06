@@ -1,0 +1,24 @@
+meta {
+  name: Index Submissions
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/api/maps/submissions
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+params:query {
+  page: 1
+  per_page: 100
+  format_id:
+  submitter_id:
+  status:
+  include:
+}

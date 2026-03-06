@@ -13,6 +13,7 @@ use App\Http\Controllers\AchievementRoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ImageGeneratorController;
+use App\Http\Controllers\MapSubmissionController;
 
 Route::put('/read-rules', [UserController::class, 'readRules'])
     ->middleware('discord.auth');
@@ -68,12 +69,25 @@ Route::prefix('maps')
 
         Route::middleware('discord.auth')
             ->group(function () {
-                Route::post('/submissions', 'submit');
-
                 Route::post('/', 'save');
                 Route::put('/{id}', 'update');
                 Route::delete('/{id}', 'destroy');
                 Route::put('/{code}/completions/transfer', 'transferCompletions');
+            });
+    });
+
+// Map Submission endpoints
+Route::prefix('maps/submissions')
+    ->controller(MapSubmissionController::class)
+    ->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{id}', 'show');
+
+        Route::middleware('discord.auth')
+            ->group(function () {
+                Route::post('/', 'store');
+                Route::delete('/{id}', 'destroy');
+                Route::put('/{id}/reject', 'reject');
             });
     });
 

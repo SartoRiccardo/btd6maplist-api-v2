@@ -1,0 +1,27 @@
+meta {
+  name: Store Submission
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/api/maps/submissions
+  body: multipart
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}
+
+body:multipart {
+  code: RiverMoen
+  format_id: 1
+  proposed: 1
+  subm_notes:
+  completion_proof: null
+}
