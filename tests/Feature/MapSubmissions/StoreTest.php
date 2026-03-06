@@ -8,6 +8,7 @@ use App\Models\Map;
 use App\Models\MapListMeta;
 use App\Models\MapSubmission;
 use App\Models\RetroMap;
+use App\Services\NinjaKiwi\NinjaKiwiApiClient;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -17,6 +18,13 @@ use PHPUnit\Metadata\Group;
 class StoreTest extends TestCase
 {
     use TestsDiscordAuthMiddleware;
+
+    protected function tearDown(): void
+    {
+        // Clean up NK API fake
+        NinjaKiwiApiClient::clearFake();
+        parent::tearDown();
+    }
 
     protected function endpoint(): string
     {
@@ -30,7 +38,12 @@ class StoreTest extends TestCase
 
     protected function requestData(): array
     {
-        return [];
+        return [
+            'code' => 'TestCode1',
+            'format_id' => FormatConstants::MAPLIST,
+            'proposed' => 0, // "Top 3"
+            'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+        ];
     }
 
     protected function expectedSuccessStatusCode(): int
@@ -38,16 +51,32 @@ class StoreTest extends TestCase
         return 201;
     }
 
-    // ========== AUTH TESTS ==========
+    // ========== PERMISSION TESTS ==========
 
     #[Group('store')]
     #[Group('map_submissions')]
-    public function test_store_inherits_discord_auth_middleware(): void
+    public function test_store_fails_if_map_does_not_exist(): void
     {
-        $this->test_auth_required();
-    }
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
 
-    // ========== PERMISSION TESTS ==========
+        // Mock NK API to return map does not exist
+        NinjaKiwiApiClient::fakeMapExists(['NoExist' => false]);
+
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => 'NoExist',
+                'format_id' => $format->id,
+                'proposed' => 1,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+            ])
+            ->assertStatus(422)
+            ->assertJson(['message' => 'This map code does not exist.']);
+    }
 
     #[Group('store')]
     #[Group('map_submissions')]
@@ -56,6 +85,11 @@ class StoreTest extends TestCase
         $user = $this->createUserWithPermissions([]);
         $map = Map::factory()->create();
         $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         Storage::fake('public');
 
@@ -63,7 +97,7 @@ class StoreTest extends TestCase
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(422)
@@ -74,37 +108,44 @@ class StoreTest extends TestCase
     #[Group('map_submissions')]
     public function test_store_succeeds_with_create_map_submission_permission(): void
     {
+        // Given
         $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
         $map = Map::factory()->create();
         $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         Storage::fake('public');
 
+        // When
         $submissionId = $this->actingAs($user, 'discord')
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(201)
             ->json('id');
 
-        // Verify submission was created using GET (not database query)
+        // Then
         $actual = $this->getJson("/api/maps/submissions/{$submissionId}")
             ->assertStatus(200)
             ->json();
 
-        $expected = MapSubmission::jsonStructure([
-            'code' => $map->code,
-            'format_id' => $format->id,
-            'proposed' => 1,
-            'submitter_id' => $user->discord_id,
-            'rejected_by' => null,
-            'accepted_meta_id' => null,
-        ]);
-
-        $this->assertEquals($expected, $actual);
+        // Verify key fields match (relationships are loaded separately)
+        $this->assertEquals($map->code, $actual['code']);
+        $this->assertEquals($format->id, $actual['format_id']);
+        $this->assertEquals(0, $actual['proposed']);
+        $this->assertEquals($user->discord_id, $actual['submitter_id']);
+        $this->assertNull($actual['rejected_by']);
+        $this->assertEquals('pending', $actual['status']);
+        $this->assertNotNull($actual['id']);
+        $this->assertNotNull($actual['created_on']);
+        $this->assertNotNull($actual['completion_proof']);
     }
 
     // ========== FORMAT STATUS TESTS ==========
@@ -119,13 +160,16 @@ class StoreTest extends TestCase
         $format->map_submission_status = 'closed';
         $format->save();
 
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+
         Storage::fake('public');
 
         $this->actingAs($user, 'discord')
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(422)
@@ -141,13 +185,19 @@ class StoreTest extends TestCase
         $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
         $map = Map::factory()->create();
         $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         // Create existing pending submission
         MapSubmission::factory()
-            ->for($map)
-            ->for($format)
             ->pending()
-            ->create();
+            ->create([
+                'code' => $map->code,
+                'format_id' => $format->id,
+            ]);
 
         Storage::fake('public');
 
@@ -155,7 +205,7 @@ class StoreTest extends TestCase
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(422)
@@ -170,6 +220,12 @@ class StoreTest extends TestCase
     {
         $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
         $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         // Create map in list (placement within map_count)
         MapListMeta::factory()
@@ -178,15 +234,13 @@ class StoreTest extends TestCase
                 'placement_curver' => 5,
             ]);
 
-        $format = Format::find(FormatConstants::MAPLIST);
-
         Storage::fake('public');
 
         $this->actingAs($user, 'discord')
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(422)
@@ -199,15 +253,19 @@ class StoreTest extends TestCase
     {
         $user = $this->createUserWithPermissions([FormatConstants::EXPERT_LIST => ['create:map_submission']]);
         $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::EXPERT_LIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         // Create map in list with difficulty
         MapListMeta::factory()
             ->for($map)
             ->create([
-                'difficulty' => 1,
+                'difficulty' => 0, // "Casual Expert"
             ]);
-
-        $format = Format::find(FormatConstants::EXPERT_LIST);
 
         Storage::fake('public');
 
@@ -215,7 +273,7 @@ class StoreTest extends TestCase
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(422)
@@ -228,15 +286,19 @@ class StoreTest extends TestCase
     {
         $user = $this->createUserWithPermissions([FormatConstants::BEST_OF_THE_BEST => ['create:map_submission']]);
         $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::BEST_OF_THE_BEST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         // Create map in list with botb_difficulty
         MapListMeta::factory()
             ->for($map)
             ->create([
-                'botb_difficulty' => 1,
+                'botb_difficulty' => 0, // "Beginner"
             ]);
-
-        $format = Format::find(FormatConstants::BEST_OF_THE_BEST);
 
         Storage::fake('public');
 
@@ -244,7 +306,7 @@ class StoreTest extends TestCase
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(422)
@@ -257,15 +319,22 @@ class StoreTest extends TestCase
     {
         $user = $this->createUserWithPermissions([FormatConstants::NOSTALGIA_PACK => ['create:map_submission']]);
         $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::NOSTALGIA_PACK);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+
+        // Create retro map
+        $retroMap = RetroMap::factory()->create();
 
         // Create map in list with remake_of
         MapListMeta::factory()
             ->for($map)
             ->create([
-                'remake_of' => RetroMap::factory()->create()->id,
+                'remake_of' => $retroMap->id,
             ]);
-
-        $format = Format::find(FormatConstants::NOSTALGIA_PACK);
 
         Storage::fake('public');
 
@@ -273,7 +342,7 @@ class StoreTest extends TestCase
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => $retroMap->id,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(422)
@@ -286,6 +355,12 @@ class StoreTest extends TestCase
     {
         $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
         $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         // Create map with placement beyond map_count (50)
         MapListMeta::factory()
@@ -294,15 +369,13 @@ class StoreTest extends TestCase
                 'placement_curver' => 60,
             ]);
 
-        $format = Format::find(FormatConstants::MAPLIST);
-
         Storage::fake('public');
 
         $this->actingAs($user, 'discord')
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(201)
@@ -317,9 +390,14 @@ class StoreTest extends TestCase
     {
         $user = $this->createUserWithPermissions([FormatConstants::EXPERT_LIST => ['create:map_submission']]);
         $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::EXPERT_LIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         // Map has no meta (not in any list)
-        $format = Format::find(FormatConstants::EXPERT_LIST);
 
         Storage::fake('public');
 
@@ -327,7 +405,7 @@ class StoreTest extends TestCase
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
             ])
             ->assertStatus(201)
@@ -346,6 +424,11 @@ class StoreTest extends TestCase
         $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
         $map = Map::factory()->create();
         $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         Storage::fake('public');
 
@@ -354,7 +437,7 @@ class StoreTest extends TestCase
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['completion_proof']);
@@ -367,6 +450,11 @@ class StoreTest extends TestCase
         $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
         $map = Map::factory()->create();
         $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        // Mock NK API to return map exists
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->image('proof.jpg');
@@ -375,7 +463,7 @@ class StoreTest extends TestCase
             ->postJson('/api/maps/submissions', [
                 'code' => $map->code,
                 'format_id' => $format->id,
-                'proposed' => 1,
+                'proposed' => 0,
                 'completion_proof' => $file,
             ])
             ->assertStatus(201)
