@@ -8,7 +8,7 @@ use App\Models\Map;
 use App\Models\MapSubmission;
 use App\Models\RetroMap;
 use App\Services\Discord\DiscordWebhookClient;
-use App\Services\NinjaKiwi\NinjaKiwiApiClient;
+use App\Services\UserService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -61,11 +61,10 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
             return;
         }
 
-        // Fetch Ninja Kiwi avatar URL if available
+        // Fetch Ninja Kiwi avatar URL from cache if available
         $avatarUrl = null;
         if ($submission->submitter->nk_oak) {
-            $deco = NinjaKiwiApiClient::getBtd6UserDeco($submission->submitter->nk_oak);
-            $avatarUrl = $deco['avatar_url'] ?? null;
+            $avatarUrl = $submission->submitter->avatar_url;
         }
 
         // Build embeds

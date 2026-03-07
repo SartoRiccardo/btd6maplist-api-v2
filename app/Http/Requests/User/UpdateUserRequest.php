@@ -4,7 +4,7 @@ namespace App\Http\Requests\User;
 
 use App\Http\Requests\BaseRequest;
 use App\Models\User;
-use App\Services\NinjaKiwi\NinjaKiwiApiClient;
+use App\Services\UserService;
 use Illuminate\Validation\Validator;
 
 /**
@@ -50,10 +50,12 @@ class UpdateUserRequest extends BaseRequest
         $validator->after(function ($validator) {
             $data = $validator->getData();
 
-            // NK OAK validation
+            // NK OAK validation - bypass cache and call API directly
             if (isset($data['nk_oak']) && $data['nk_oak'] !== null && $data['nk_oak'] !== '') {
-                $deco = NinjaKiwiApiClient::getBtd6UserDeco($data['nk_oak']);
-                if ($deco['avatar_url'] === null && $deco['banner_url'] === null) {
+                /** @var UserService $userService */
+                $userService = app(UserService::class);
+
+                if (!$userService->validateOak($data['nk_oak'])) {
                     $validator->errors()->add('nk_oak', 'The provided Ninja Kiwi OAK is invalid.');
                 }
             }

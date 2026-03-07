@@ -63,7 +63,10 @@ class ShowTest extends TestCase
     #[Group('users')]
     public function test_include_flair_with_oak_returns_actual_urls(): void
     {
-        $user = User::factory()->create(['nk_oak' => 'test_oak_123']);
+        $user = User::factory()
+            ->withOak('test_oak_123')
+            ->cachedFlair()
+            ->create();
 
         NinjaKiwiApiClient::fake([
             'avatar_url' => 'https://example.com/avatar.png',
@@ -87,7 +90,10 @@ class ShowTest extends TestCase
     #[Group('users')]
     public function test_include_random_value_does_not_add_flair_fields(): void
     {
-        $user = User::factory()->create(['nk_oak' => 'test_oak_123']);
+        $user = User::factory()
+            ->withOak('test_oak_123')
+            ->cachedFlair()
+            ->create();
 
         NinjaKiwiApiClient::fake([
             'avatar_url' => 'https://example.com/avatar.png',

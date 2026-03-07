@@ -8,7 +8,7 @@ use App\Jobs\DeleteMapSubmissionWebhookJob;
 use App\Jobs\SendMapSubmissionWebhookJob;
 use App\Models\MapSubmission;
 use App\Services\MapSubmission\MapSubmissionValidatorFactory;
-use App\Services\NinjaKiwi\NinjaKiwiApiClient;
+use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -73,16 +73,14 @@ class MapSubmissionController extends Controller
             ->paginate($perPage, ['*'], 'page', $page);
 
         // Load flair if requested
-        $data = $paginated->map(function ($submission) use ($include) {
-            $result = $submission->toArray();
-
-            if (in_array('submitter.flair', $include) && $submission->submitter && $submission->submitter->nk_oak) {
-                $deco = NinjaKiwiApiClient::getBtd6UserDeco($submission->submitter->nk_oak);
-                $result['submitter']['avatar_url'] = $deco['avatar_url'] ?? null;
-                $result['submitter']['banner_url'] = $deco['banner_url'] ?? null;
+        $userService = app(UserService::class);
+        $data = $paginated->map(function ($submission) use ($include, $userService) {
+            if (in_array('submitter.flair', $include) && $submission->submitter) {
+                $submission->submitter->appendFlair();
+                $userService->refreshUserCache($submission->submitter);
             }
 
-            return $result;
+            return $submission->toArray();
         });
 
         return response()->json([
@@ -198,15 +196,13 @@ class MapSubmissionController extends Controller
             return response()->json(['message' => 'Not Found'], 404);
         }
 
-        $result = $submission->toArray();
-
-        if ($includeSubmitterFlair && $submission->submitter && $submission->submitter->nk_oak) {
-            $deco = NinjaKiwiApiClient::getBtd6UserDeco($submission->submitter->nk_oak);
-            $result['submitter']['avatar_url'] = $deco['avatar_url'] ?? null;
-            $result['submitter']['banner_url'] = $deco['banner_url'] ?? null;
+        if ($includeSubmitterFlair && $submission->submitter) {
+            $submission->submitter->appendFlair();
+            $userService = app(UserService::class);
+            $userService->refreshUserCache($submission->submitter);
         }
 
-        return response()->json($result);
+        return response()->json($submission->toArray());
     }
 
     /**

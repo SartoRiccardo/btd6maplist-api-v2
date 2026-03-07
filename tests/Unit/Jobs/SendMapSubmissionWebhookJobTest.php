@@ -298,9 +298,10 @@ class SendMapSubmissionWebhookJobTest extends TestCase
         $format->map_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
         $format->save();
 
-        $userWithOak = User::factory()->create([
-            'nk_oak' => 'test_oak_123',
-        ]);
+        $userWithOak = User::factory()
+            ->withOak('test_oak_123')
+            ->cachedFlair()
+            ->create();
 
         $submission = MapSubmission::factory()->create([
             'code' => $this->map->code,

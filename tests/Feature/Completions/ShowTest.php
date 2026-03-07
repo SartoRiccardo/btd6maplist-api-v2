@@ -377,7 +377,10 @@ class ShowTest extends TestCase
     #[Group('include')]
     public function test_include_players_flair_adds_avatar_and_banner_urls(): void
     {
-        $player = User::factory()->create(['nk_oak' => 'test_oak_123']);
+        $player = User::factory()
+            ->withOak('test_oak_123')
+            ->cachedFlair()
+            ->create();
         $completion = Completion::factory()->create();
         $meta = CompletionMeta::factory()
             ->for($completion)
@@ -408,7 +411,13 @@ class ShowTest extends TestCase
     #[Group('include')]
     public function test_include_accepted_by_flair_adds_avatar_and_banner_urls(): void
     {
-        $accepter = User::factory()->create(['nk_oak' => 'accepter_oak_456']);
+        $accepter = User::factory()
+            ->withOak('accepter_oak_456')
+            ->cachedFlair(
+                'https://example.com/accepter-avatar.png',
+                'https://example.com/accepter-banner.png'
+            )
+            ->create();
         $completion = Completion::factory()->create();
         $meta = CompletionMeta::factory()
             ->for($completion)
@@ -437,8 +446,15 @@ class ShowTest extends TestCase
     #[Group('include')]
     public function test_multiple_include_parameters_work_together(): void
     {
-        $player = User::factory()->create(['nk_oak' => 'player_oak']);
-        $accepter = User::factory()->create(['nk_oak' => 'accepter_oak']);
+        $player = User::factory()
+            ->withOak('player_oak')
+            ->cachedFlair()
+            ->create();
+
+        $accepter = User::factory()
+            ->withOak('accepter_oak')
+            ->cachedFlair()
+            ->create();
         $completion = Completion::factory()->create();
         $meta = CompletionMeta::factory()
             ->for($completion)

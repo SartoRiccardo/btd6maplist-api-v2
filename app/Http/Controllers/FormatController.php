@@ -7,7 +7,7 @@ use App\Http\Requests\Format\LeaderboardRequest;
 use App\Http\Requests\Format\UpdateFormatRequest;
 use App\Models\Format;
 use App\Models\User;
-use App\Services\NinjaKiwi\NinjaKiwiApiClient;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -194,11 +194,11 @@ class FormatController
                 'user' => $user->toArray(),
             ];
 
-            if ($includeUserFlair && $user?->nk_oak) {
-                $entry['user'] = [
-                    ...$entry['user'],
-                    ...NinjaKiwiApiClient::getBtd6UserDeco($user->nk_oak),
-                ];
+            if ($includeUserFlair && $user) {
+                $user->appendFlair();
+                $userService = app(UserService::class);
+                $userService->refreshUserCache($user);
+                $entry['user'] = $user->toArray();
             }
 
             $entries[] = $entry;

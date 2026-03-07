@@ -6,7 +6,7 @@ use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\AchievementRole;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\NinjaKiwi\NinjaKiwiApiClient;
+use App\Services\UserService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -69,18 +69,17 @@ class UserController
         if (!$user) {
             return response()->json(['message' => 'Not Found'], 404);
         }
-        $response = $user->toArray();
 
-        // Only fetch and include NK data if 'flair' is in includes
+        // Append flair if requested
         if ($includeFlair) {
-            $deco = null;
-            if ($user->nk_oak) {
-                $deco = NinjaKiwiApiClient::getBtd6UserDeco($user->nk_oak);
-            }
-
-            $response['avatar_url'] = $deco['avatar_url'] ?? null;
-            $response['banner_url'] = $deco['banner_url'] ?? null;
+            $user->appendFlair();
         }
+
+        // Trigger background cache refresh if needed
+        $userService = app(UserService::class);
+        $userService->refreshUserCache($user);
+
+        $response = $user->toArray();
 
         // Include medal statistics if 'medals' is in includes
         if ($includeMedals) {
@@ -192,6 +191,12 @@ class UserController
 
         // Update user with validated data
         $targetUser->update($validatedData);
+
+        // Immediately refresh cache if nk_oak was changed (force = synchronous)
+        if (isset($validatedData['nk_oak'])) {
+            $userService = app(UserService::class);
+            $userService->refreshUserCache($targetUser, force: true);
+        }
 
         return response()->json($targetUser);
     }

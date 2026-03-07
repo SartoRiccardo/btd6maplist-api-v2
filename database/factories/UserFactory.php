@@ -29,6 +29,31 @@ class UserFactory extends Factory
             'nk_oak' => null,
             'has_seen_popup' => false,
             'is_banned' => false,
+            'cached_avatar_url' => null,
+            'cached_banner_url' => null,
+            'ninjakiwi_cache_expire' => null,
         ];
+    }
+
+    /**
+     * Indicate that the user has cached flair (avatar and banner URLs).
+     */
+    public function cachedFlair(?string $avatarUrl = null, ?string $bannerUrl = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'cached_avatar_url' => $avatarUrl ?? 'https://example.com/avatar.png',
+            'cached_banner_url' => $bannerUrl ?? 'https://example.com/banner.png',
+            'ninjakiwi_cache_expire' => now()->addMinutes(10),
+        ]);
+    }
+
+    /**
+     * Indicate that the user has a Ninja Kiwi OAK.
+     */
+    public function withOak(string $oak): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'nk_oak' => $oak,
+        ]);
     }
 }

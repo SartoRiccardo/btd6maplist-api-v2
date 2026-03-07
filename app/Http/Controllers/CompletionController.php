@@ -11,7 +11,7 @@ use App\Models\LeastCostChimps;
 use App\Models\MapListMeta;
 use App\Services\CompletionSubmission\CompletionSubmissionValidatorFactory;
 use App\Services\CompletionService;
-use App\Services\NinjaKiwi\NinjaKiwiApiClient;
+use App\Services\UserService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -294,31 +294,26 @@ class CompletionController
         if ($meta->accepted_by_id) {
             $acceptedBy = $meta->getRelationValue('acceptedBy');
             if ($acceptedBy) {
-                $result['accepted_by'] = $acceptedBy->toArray();
-
                 // Add flair if requested
-                if ($includeAcceptedByFlair && $acceptedBy->nk_oak) {
-                    $deco = NinjaKiwiApiClient::getBtd6UserDeco($acceptedBy->nk_oak);
-                    $result['accepted_by']['avatar_url'] = $deco['avatar_url'] ?? null;
-                    $result['accepted_by']['banner_url'] = $deco['banner_url'] ?? null;
+                if ($includeAcceptedByFlair) {
+                    $acceptedBy->appendFlair();
+                    $userService = app(UserService::class);
+                    $userService->refreshUserCache($acceptedBy);
                 }
+
+                $result['accepted_by'] = $acceptedBy->toArray();
             }
         }
 
         // Load players with flair if requested
         if ($includePlayersFlair) {
             $players = $meta->getRelation('players') ?? collect();
-            $result['players'] = $players->map(function ($player) {
-                $deco = null;
-                if ($player->nk_oak) {
-                    $deco = NinjaKiwiApiClient::getBtd6UserDeco($player->nk_oak);
-                }
+            $userService = app(UserService::class);
+            $result['players'] = $players->map(function ($player) use ($userService) {
+                $player->appendFlair();
+                $userService->refreshUserCache($player);
 
-                return [
-                    ...$player->toArray(),
-                    'avatar_url' => $deco['avatar_url'] ?? null,
-                    'banner_url' => $deco['banner_url'] ?? null,
-                ];
+                return $player->toArray();
             });
         }
 

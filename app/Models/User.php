@@ -52,12 +52,18 @@ class User extends Authenticatable
         'nk_oak',
         'has_seen_popup',
         'is_banned',
+        'cached_avatar_url',
+        'cached_banner_url',
+        'ninjakiwi_cache_expire',
     ];
 
     protected $hidden = [
         'nk_oak',
         'has_seen_popup',
         'pivot',
+        'cached_avatar_url',
+        'cached_banner_url',
+        'ninjakiwi_cache_expire',
     ];
 
     /**
@@ -71,6 +77,7 @@ class User extends Authenticatable
             'discord_id' => 'string',
             'has_seen_popup' => 'boolean',
             'is_banned' => 'boolean',
+            'ninjakiwi_cache_expire' => 'datetime',
         ];
     }
 
@@ -217,6 +224,33 @@ class User extends Authenticatable
             'no_geraldo' => 0,
             'current_lcc' => 0,
         ];
+    }
+
+    /**
+     * Get the user's avatar URL from cache.
+     * Returns null if not cached.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->cached_avatar_url;
+    }
+
+    /**
+     * Get the user's banner URL from cache.
+     * Returns null if not cached.
+     */
+    public function getBannerUrlAttribute(): ?string
+    {
+        return $this->cached_banner_url;
+    }
+
+    /**
+     * Append flair (avatar and banner URLs) to this user model instance.
+     * Convenience method for $user->append(['avatar_url', 'banner_url']).
+     */
+    public function appendFlair(): void
+    {
+        $this->append(['avatar_url', 'banner_url']);
     }
 
     // --- TestableStructure --- //
