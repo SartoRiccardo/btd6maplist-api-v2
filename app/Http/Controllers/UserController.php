@@ -192,10 +192,10 @@ class UserController
         // Update user with validated data
         $targetUser->update($validatedData);
 
-        // Immediately refresh cache if nk_oak was changed (force = synchronous)
+        // Refresh cache if nk_oak was changed and cache is stale
         if (isset($validatedData['nk_oak'])) {
             $userService = app(UserService::class);
-            $userService->refreshUserCache($targetUser, force: true);
+            $userService->refreshUserCache($targetUser);
         }
 
         return response()->json($targetUser);

@@ -236,4 +236,47 @@ class UpdateUserTest extends TestCase
                 ],
             ]);
     }
+
+    public function test_updating_oak_immediately_refreshes_cache(): void
+    {
+        // Fake the NinjaKiwi API
+        NinjaKiwiApiClient::fake([
+            'avatar_url' => 'https://example.com/new-avatar.png',
+            'banner_url' => 'https://example.com/new-banner.png',
+        ]);
+
+        // Create user with OAK but no cached data
+        $user = $this->createUserWithPermissions([null => ['edit:self']]);
+        $user->nk_oak = 'test_oak_123';
+        $user->cached_avatar_url = null;
+        $user->cached_banner_url = null;
+        $user->ninjakiwi_cache_expire = null;
+        $user->save();
+
+        // GET before PUT - cache should be null
+        $beforeResponse = $this->actingAs($user, 'discord')
+            ->getJson("/api/users/{$user->discord_id}?include=flair")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertNull($beforeResponse['avatar_url']);
+        $this->assertNull($beforeResponse['banner_url']);
+
+        // PUT to update OAK (even though it's the same, this triggers refresh)
+        $this->actingAs($user, 'discord')
+            ->putJson('/api/users/@me', [
+                'name' => $user->name,
+                'nk_oak' => 'test_oak_123',
+            ])
+            ->assertStatus(200);
+
+        // GET after PUT - cache should be populated
+        $afterResponse = $this->actingAs($user, 'discord')
+            ->getJson("/api/users/{$user->discord_id}?include=flair")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertEquals('https://example.com/new-avatar.png', $afterResponse['avatar_url']);
+        $this->assertEquals('https://example.com/new-banner.png', $afterResponse['banner_url']);
+    }
 }
