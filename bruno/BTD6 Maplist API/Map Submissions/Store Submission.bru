@@ -25,3 +25,13 @@ body:multipart {
   subm_notes:
   completion_proof: null
 }
+
+script:post-response {
+  if (res.status === 201) {
+    const data = res.body;
+    if (data?.id) {
+      bru.setEnvVar("LAST_SUBMISSION_ID", data.id);
+      console.log("Submission created with ID:", data.id);
+    }
+  }
+}

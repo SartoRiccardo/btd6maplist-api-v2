@@ -4,6 +4,7 @@ namespace Tests\Feature\MapSubmissions;
 
 use App\Models\MapSubmission;
 use App\Models\User;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use Tests\Traits\TestsDiscordAuthMiddleware;
@@ -12,6 +13,12 @@ use PHPUnit\Metadata\Group;
 class DeleteTest extends TestCase
 {
     use TestsDiscordAuthMiddleware;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Bus::fake(); // Prevent job dispatch during tests
+    }
 
     protected function endpoint(): string
     {

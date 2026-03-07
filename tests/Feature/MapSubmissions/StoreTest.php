@@ -10,6 +10,7 @@ use App\Models\MapSubmission;
 use App\Models\RetroMap;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use Tests\Traits\TestsDiscordAuthMiddleware;
@@ -18,6 +19,12 @@ use PHPUnit\Metadata\Group;
 class StoreTest extends TestCase
 {
     use TestsDiscordAuthMiddleware;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Bus::fake(); // Prevent job dispatch during tests
+    }
 
     protected function tearDown(): void
     {

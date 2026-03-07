@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\MapSubmission\IndexMapSubmissionRequest;
 use App\Http\Requests\MapSubmission\StoreMapSubmissionRequest;
+use App\Jobs\DeleteMapSubmissionWebhookJob;
+use App\Jobs\SendMapSubmissionWebhookJob;
 use App\Models\MapSubmission;
 use App\Services\MapSubmission\MapSubmissionValidatorFactory;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
@@ -144,6 +146,9 @@ class MapSubmissionController extends Controller
             'created_on' => now(),
         ]);
 
+        // Dispatch webhook job
+        dispatch(new SendMapSubmissionWebhookJob($submission->id));
+
         return response()->json(['id' => $submission->id], 201);
     }
 
@@ -247,6 +252,14 @@ class MapSubmissionController extends Controller
         // Check if pending (not rejected and not accepted)
         if ($submission->rejected_by !== null || $submission->accepted_meta_id !== null) {
             return response()->json(['message' => 'Cannot delete a submission that has already been processed.'], 422);
+        }
+
+        // Delete webhook message if it exists
+        if ($submission->wh_msg_id && $submission->format->map_submission_wh) {
+            dispatch(new DeleteMapSubmissionWebhookJob(
+                $submission->format->map_submission_wh,
+                $submission->wh_msg_id
+            ));
         }
 
         // Delete proof image
