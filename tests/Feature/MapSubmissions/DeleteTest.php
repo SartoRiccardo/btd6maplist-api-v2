@@ -58,7 +58,7 @@ class DeleteTest extends TestCase
     public function test_delete_succeeds_for_owner(): void
     {
         $user = User::factory()->create();
-        $submission = MapSubmission::factory()->for($user, 'submitter')->create();
+        $submission = MapSubmission::factory()->create(['submitter_id' => $user->discord_id]);
 
         Storage::fake('public');
 
@@ -80,9 +80,8 @@ class DeleteTest extends TestCase
     {
         $user = User::factory()->create();
         $submission = MapSubmission::factory()
-            ->for($user, 'submitter')
             ->rejected()
-            ->create();
+            ->create(['submitter_id' => $user->discord_id]);
 
         $this->actingAs($user, 'discord')
             ->deleteJson("/api/maps/submissions/{$submission->id}")
@@ -96,9 +95,8 @@ class DeleteTest extends TestCase
     {
         $user = User::factory()->create();
         $submission = MapSubmission::factory()
-            ->for($user, 'submitter')
             ->accepted()
-            ->create();
+            ->create(['submitter_id' => $user->discord_id]);
 
         $this->actingAs($user, 'discord')
             ->deleteJson("/api/maps/submissions/{$submission->id}")
@@ -112,9 +110,8 @@ class DeleteTest extends TestCase
     {
         $user = User::factory()->create();
         $submission = MapSubmission::factory()
-            ->for($user, 'submitter')
             ->pending()
-            ->create();
+            ->create(['submitter_id' => $user->discord_id]);
 
         Storage::fake('public');
 
@@ -138,9 +135,8 @@ class DeleteTest extends TestCase
 
         $user = User::factory()->create();
         $submission = MapSubmission::factory()
-            ->for($user, 'submitter')
             ->pending()
-            ->create();
+            ->create(['submitter_id' => $user->discord_id]);
 
         // Create a fake image file
         Storage::disk('public')->put($submission->completion_proof, 'fake-image-content');

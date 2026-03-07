@@ -56,6 +56,7 @@ class MapSubmission extends Model
 
     protected $casts = [
         'created_on' => 'timestamp',
+        'submitter_id' => 'string',
     ];
 
     /**
