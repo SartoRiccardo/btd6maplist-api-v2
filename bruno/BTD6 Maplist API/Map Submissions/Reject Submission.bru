@@ -1,0 +1,19 @@
+meta {
+  name: Reject Submission
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{BASE_URL}}/api/maps/submissions/{{submission_id}}/reject
+  body: none
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Delete Submission
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{BASE_URL}}/api/maps/submissions/{{submission_id}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{USER_AUTH_TOKEN}}
+}

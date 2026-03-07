@@ -5,10 +5,13 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
+        // Drop views that depend on legacy columns
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS snapshot_lb_linked_roles');
+        DB::statement('DROP VIEW IF EXISTS lb_linked_roles');
+
         // Get the max ID to set sequence correctly
         $maxId = DB::table('achievement_roles')->max('id') ?? 1;
 
