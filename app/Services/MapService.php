@@ -201,6 +201,43 @@ class MapService
     }
 
     /**
+     * Validate that at least one meta field is non-null after permission filtering.
+     *
+     * @param array $filteredMetaFields The filtered meta fields from filterMetaFieldsByPermissions()
+     * @param MapListMeta|null $existingMeta Existing meta for PUT (null for POST)
+     * @throws ValidationException If all meta fields are null
+     */
+    public function validateAtLeastOneMetaFieldIsSet(array $filteredMetaFields, ?MapListMeta $existingMeta = null): void
+    {
+        $permissionFields = $this->getPermissionFieldMapping();
+        $metaFields = array_values($permissionFields); // ['placement_curver', 'placement_allver', 'difficulty', 'botb_difficulty', 'remake_of']
+
+        $allNull = true;
+        foreach ($metaFields as $field) {
+            $value = null;
+
+            if (array_key_exists($field, $filteredMetaFields)) {
+                // Field is in filtered array (user provided it or it was filtered to null)
+                $value = $filteredMetaFields[$field];
+            } elseif ($existingMeta !== null) {
+                // For PUT: Field not in filtered array means it retains existing value
+                $value = $existingMeta->$field;
+            }
+
+            if ($value !== null) {
+                $allNull = false;
+                break;
+            }
+        }
+
+        if ($allNull) {
+            throw ValidationException::withMessages([
+                'meta_fields' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
+            ]);
+        }
+    }
+
+    /**
      * Validate that placement values don't exceed the maximum allowed.
      *
      * Max = current max in list + (1 if map's value is NULL, else 0)

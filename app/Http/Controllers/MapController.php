@@ -353,6 +353,9 @@ class MapController
                 null  // POST: non-permitted fields → NULL
             );
 
+            // Validate at least one meta field is set
+            $mapService->validateAtLeastOneMetaFieldIsSet($metaFields, null);
+
             // Create the Map
             $map = Map::create([
                 'code' => $validated['code'],
@@ -549,6 +552,9 @@ class MapController
                 $userFormatIds,
                 $existingMeta
             );
+
+            // Validate at least one meta field is set
+            $mapService->validateAtLeastOneMetaFieldIsSet($metaFields, $existingMeta);
 
             // Update Map fields
             $map->name = $validated['name'];

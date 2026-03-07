@@ -1439,6 +1439,142 @@ class UpdateMapTest extends TestCase
         $this->markTestIncomplete('Feature not yet implemented: no job dispatched when setting value for format different from submission format');
     }
 
+    #[Group('update')]
+    #[Group('maps')]
+    public function test_map_update_fails_if_all_meta_fields_are_cleared_to_null(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:map']]);
+
+        // Set up map with placement_curver = 1
+        $this->testMeta->update([
+            'placement_curver' => 1,
+            'placement_allver' => null,
+            'difficulty' => null,
+            'botb_difficulty' => null,
+            'remake_of' => null,
+        ]);
+
+        $payload = [
+            'name' => 'Updated Test Map',
+            'placement_curver' => null, // Clear the only meta field
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson('/api/maps/TESTCODE', $payload)
+            ->assertStatus(422)
+            ->assertJson([
+                'message' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
+                'errors' => [
+                    'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
+                ],
+            ]);
+    }
+
+    #[Group('update')]
+    #[Group('maps')]
+    public function test_map_update_succeeds_if_at_least_one_meta_field_remains(): void
+    {
+        $user = $this->createUserWithPermissions([null => ['edit:map']]);
+
+        // Set up map with multiple meta fields
+        $retroMap = RetroMap::factory()->create();
+        $this->testMeta->update([
+            'placement_curver' => 1,
+            'placement_allver' => 2,
+            'difficulty' => 3,
+            'botb_difficulty' => 1,
+            'remake_of' => $retroMap->id,
+        ]);
+
+        // Clear some fields but leave at least one
+        $payload = [
+            'name' => 'Updated Test Map',
+            'placement_curver' => null,
+            'placement_allver' => null,
+            'difficulty' => null,
+            // Keep botb_difficulty and remake_of
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson('/api/maps/TESTCODE', $payload)
+            ->assertStatus(204);
+    }
+
+    #[Group('update')]
+    #[Group('maps')]
+    public function test_map_update_with_permission_can_clear_all_but_retains_existing(): void
+    {
+        // User only has MAPLIST permission, tries to clear placement_curver
+        // But other fields (that exist) should be preserved
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:map']]);
+
+        $retroMap = RetroMap::factory()->create();
+        $this->testMeta->update([
+            'placement_curver' => 1,
+            'placement_allver' => 2,
+            'difficulty' => 3,
+            'botb_difficulty' => 1,
+            'remake_of' => $retroMap->id,
+        ]);
+
+        $payload = [
+            'name' => 'Updated Test Map',
+            'placement_curver' => null, // Try to clear the only field user has permission for
+        ];
+
+        // This should succeed because other fields (not in user's permission scope) are preserved
+        $this->actingAs($user, 'discord')
+            ->putJson('/api/maps/TESTCODE', $payload)
+            ->assertStatus(204);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson('/api/maps/TESTCODE')
+            ->assertStatus(200)
+            ->json();
+
+        // placement_curver should be null (user cleared it)
+        $this->assertNull($actual['placement_curver']);
+        // Other fields should be preserved (user doesn't have permission to change them)
+        $this->assertEquals(2, $actual['placement_allver']);
+        $this->assertEquals(3, $actual['difficulty']);
+        $this->assertEquals(1, $actual['botb_difficulty']);
+        $this->assertEquals($retroMap->id, $actual['remake_of']);
+    }
+
+    #[Group('update')]
+    #[Group('maps')]
+    public function test_map_update_fails_if_provided_field_is_not_in_user_permissions(): void
+    {
+        // User has EXPERT_LIST permission (controls difficulty), but tries to set placement_curver (MAPLIST permission)
+        // while all other fields are null
+        $user = $this->createUserWithPermissions([FormatConstants::EXPERT_LIST => ['edit:map']]);
+
+        // Set up map with only difficulty set (field user has permission for)
+        $this->testMeta->update([
+            'placement_curver' => null,
+            'placement_allver' => null,
+            'difficulty' => 3,
+            'botb_difficulty' => null,
+            'remake_of' => null,
+        ]);
+
+        $payload = [
+            'name' => 'Updated Test Map',
+            'difficulty' => null, // Clear the only field user has permission for
+            'placement_curver' => 1, // Try to set a field user doesn't have permission for
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson('/api/maps/TESTCODE', $payload)
+            ->assertStatus(422)
+            ->assertJson([
+                'message' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
+                'errors' => [
+                    'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
+                ],
+            ]);
+    }
+
     /**
      * Update from valid value to another valid value.
      * Should NOT dispatch accept submission job (job only on null -> value transition).

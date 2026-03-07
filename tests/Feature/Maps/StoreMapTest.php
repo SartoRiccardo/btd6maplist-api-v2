@@ -569,6 +569,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'creators' => [],
             'verifications' => [],
         ];
@@ -598,6 +599,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
         ];
 
         $this->actingAs($user, 'discord')
@@ -647,6 +649,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'creators' => [
                 ['user_id' => $creator->discord_id, 'role' => 'Gameplay'],
             ],
@@ -701,6 +704,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'creators' => [
                 ['user_id' => $creator1->discord_id, 'role' => 'Gameplay'],
                 ['user_id' => $creator2->discord_id, 'role' => null],
@@ -764,6 +768,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'verifiers' => [
                 ['user_id' => $verifier->discord_id, 'version' => null],
                 ['user_id' => $verifier->discord_id, 'version' => $currentVersion],
@@ -817,6 +822,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'custom_map_preview_file' => $file,
         ];
 
@@ -846,6 +852,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'map_preview_url' => 'https://example.com/old-preview.png',
             'custom_map_preview_file' => $file,
         ];
@@ -917,6 +924,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'r6_start_file' => $file,
         ];
 
@@ -946,6 +954,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'r6_start' => 'https://example.com/old-r6-start.png',
             'r6_start_file' => $file,
         ];
@@ -1057,6 +1066,7 @@ class StoreMapTest extends TestCase
         $payload = [
             'code' => 'TESTCODE',
             'name' => 'Test Map',
+            'placement_curver' => 1,
             'aliases' => ['DeletedMapAlias'],
         ];
 
@@ -1137,6 +1147,90 @@ class StoreMapTest extends TestCase
     public function test_store_map_that_was_a_submission_dispatches_accept_submission_job(): void
     {
         $this->markTestIncomplete('Feature not yet implemented: dispatch accept submission job when storing a map that was a submission');
+    }
+
+    #[Group('store')]
+    #[Group('maps')]
+    public function test_map_store_fails_if_all_meta_fields_are_null(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:map']]);
+
+        $payload = [
+            'code' => 'TESTCODE',
+            'name' => 'Test Map',
+            // No meta fields provided
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps', $payload)
+            ->assertStatus(422)
+            ->assertJson([
+                'message' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
+                'errors' => [
+                    'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
+                ],
+            ]);
+    }
+
+    #[Group('store')]
+    #[Group('maps')]
+    public function test_map_store_succeeds_if_at_least_one_meta_field_is_provided(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:map']]);
+
+        $payload = [
+            'code' => 'TESTCODE',
+            'name' => 'Test Map',
+            'placement_curver' => 1,
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps', $payload)
+            ->assertStatus(201)
+            ->assertJson(['code' => 'TESTCODE']);
+    }
+
+    #[Group('store')]
+    #[Group('maps')]
+    public function test_map_store_succeeds_with_remake_of_only(): void
+    {
+        $retroMap = RetroMap::factory()->create();
+        $user = $this->createUserWithPermissions([FormatConstants::NOSTALGIA_PACK => ['edit:map']]);
+
+        $payload = [
+            'code' => 'TESTCODE',
+            'name' => 'Test Map',
+            'remake_of' => $retroMap->id,
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps', $payload)
+            ->assertStatus(201)
+            ->assertJson(['code' => 'TESTCODE']);
+    }
+
+    #[Group('store')]
+    #[Group('maps')]
+    public function test_map_store_fails_if_provided_field_is_not_in_user_permissions(): void
+    {
+        // User has EXPERT_LIST permission (controls difficulty), but provides placement_curver (MAPLIST permission)
+        $user = $this->createUserWithPermissions([FormatConstants::EXPERT_LIST => ['edit:map']]);
+
+        $payload = [
+            'code' => 'TESTCODE',
+            'name' => 'Test Map',
+            'placement_curver' => 1, // User doesn't have MAPLIST permission
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps', $payload)
+            ->assertStatus(422)
+            ->assertJson([
+                'message' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
+                'errors' => [
+                    'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
+                ],
+            ]);
     }
 
     /**
