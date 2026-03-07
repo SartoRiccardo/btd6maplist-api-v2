@@ -60,6 +60,21 @@ Route::prefix('retro-games')
         Route::get('/', 'index');
     });
 
+// Map Submission endpoints
+Route::prefix('maps/submissions')
+    ->controller(MapSubmissionController::class)
+    ->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{id}', 'show');
+
+        Route::middleware('discord.auth')
+            ->group(function () {
+                Route::post('/', 'store');
+                Route::delete('/{id}', 'destroy');
+                Route::put('/{id}/reject', 'reject');
+            });
+    });
+
 // Map endpoints
 Route::prefix('maps')
     ->controller(MapController::class)
@@ -73,21 +88,6 @@ Route::prefix('maps')
                 Route::put('/{id}', 'update');
                 Route::delete('/{id}', 'destroy');
                 Route::put('/{code}/completions/transfer', 'transferCompletions');
-            });
-    });
-
-// Map Submission endpoints
-Route::prefix('maps/submissions')
-    ->controller(MapSubmissionController::class)
-    ->group(function () {
-        Route::get('/', 'index');
-        Route::get('/{id}', 'show');
-
-        Route::middleware('discord.auth')
-            ->group(function () {
-                Route::post('/', 'store');
-                Route::delete('/{id}', 'destroy');
-                Route::put('/{id}/reject', 'reject');
             });
     });
 

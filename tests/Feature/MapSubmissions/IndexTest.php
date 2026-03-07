@@ -63,6 +63,13 @@ class IndexTest extends TestCase
 
         $this->assertCount(1, $actual);
         $expected = MapSubmission::jsonStructure($submission->toArray());
+        $expected['submitter'] = [
+            'discord_id' => $submission->submitter->discord_id,
+            'name' => $submission->submitter->name,
+            'is_banned' => $submission->submitter->is_banned,
+        ];
+        $expected['rejecter'] = null;
+        $expected['format'] = Format::jsonStructure($submission->format->toArray());
 
         $this->assertEquals($expected, $actual[0]);
     }
