@@ -949,6 +949,7 @@ class UpdateMapTest extends TestCase
             'name' => 'Updated Test Map',
             'placement_curver' => null,
             'placement_allver' => null,
+            'difficulty' => 3,
         ];
 
         $this->actingAs($user, 'discord')
@@ -1584,5 +1585,45 @@ class UpdateMapTest extends TestCase
     public function test_update_map_from_value_to_value_does_not_dispatch_job(): void
     {
         $this->markTestIncomplete('Feature not yet implemented: no job dispatched when updating from one valid value to another');
+    }
+
+    #[Group('update')]
+    #[Group('maps')]
+    public function test_map_update_resets_deleted_on_timestamp_to_null(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:map']]);
+
+        // Create a map that is "deleted" (has deleted_on set)
+        Map::factory()->create(['code' => 'DELTEST', 'name' => 'Deleted Test Map']);
+        MapListMeta::factory()->for(Map::find('DELTEST'))->create([
+            'placement_curver' => 10,
+            'deleted_on' => now()->subDay(),
+        ]);
+
+        // Verify the map is deleted
+        $beforeUpdate = $this->actingAs($user, 'discord')
+            ->getJson('/api/maps/DELTEST')
+            ->assertStatus(200)
+            ->json();
+        $this->assertNotNull($beforeUpdate['deleted_on']);
+
+        // Update only the name (no meta field changes)
+        $payload = [
+            'name' => 'Undeleted Test Map',
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson('/api/maps/DELTEST', $payload)
+            ->assertStatus(204);
+
+        // Verify deleted_on is now null
+        $afterUpdate = $this->actingAs($user, 'discord')
+            ->getJson('/api/maps/DELTEST')
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertNull($afterUpdate['deleted_on']);
+        $this->assertEquals('Undeleted Test Map', $afterUpdate['name']);
+        $this->assertEquals(10, $afterUpdate['placement_curver']); // Meta preserved
     }
 }

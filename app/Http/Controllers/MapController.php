@@ -434,11 +434,6 @@ class MapController
         });
     }
 
-    public function submit(Request $request)
-    {
-        return response()->json(['message' => 'Not Implemented'], 501);
-    }
-
     /**
      * Update the specified map in storage.
      *
@@ -613,7 +608,9 @@ class MapController
             $optimalHeroesChanged = array_key_exists('optimal_heros', $validated)
                 && $validated['optimal_heros'] !== $existingMeta->optimal_heros;
 
-            if ($metaFieldsChanged || $optimalHeroesChanged) {
+            $shouldCreateNewMeta = $metaFieldsChanged || $optimalHeroesChanged || $existingMeta->deleted_on !== null;
+
+            if ($shouldCreateNewMeta) {
                 $getCurver = array_key_exists('placement_curver', $metaFields);
                 $getAllver = array_key_exists('placement_allver', $metaFields);
                 $mapService->rerankPlacements(
