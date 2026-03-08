@@ -381,16 +381,16 @@ class MapService
             ->get();
 
         foreach ($pendingSubmissions as $pendingSubmission) {
-            if (!$pendingSubmission || !$pendingSubmission->wh_msg_id) {
+            if (!$pendingSubmission->wh_msg_id) {
                 continue;
             }
 
             // Check if format requires placement validation
             $shouldAccept = true;
 
-            if (in_array($formatId, [FormatConstants::MAPLIST, FormatConstants::MAPLIST_ALL_VERSIONS])) {
+            if (in_array($pendingSubmission->format_id, [FormatConstants::MAPLIST, FormatConstants::MAPLIST_ALL_VERSIONS])) {
                 $mapCount = Config::loadVars(['map_count'])->get('map_count', 50);
-                $placement = $formatId === FormatConstants::MAPLIST
+                $placement = $pendingSubmission->format_id === FormatConstants::MAPLIST
                     ? $newMeta->placement_curver
                     : $newMeta->placement_allver;
 
@@ -408,7 +408,7 @@ class MapService
 
             Log::info('Implicitly accepted map submission', [
                 'map_code' => $newMeta->code,
-                'format_id' => $formatId,
+                'format_id' => $pendingSubmission->format_id,
                 'submission_id' => $pendingSubmission->id,
                 'meta_id' => $newMeta->id,
             ]);
