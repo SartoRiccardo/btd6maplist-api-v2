@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Completion\IndexCompletionRequest;
 use App\Http\Requests\Completion\StoreCompletionRequest;
 use App\Http\Requests\Completion\UpdateCompletionRequest;
+use App\Jobs\SendCompletionSubmissionWebhookJob;
+use App\Jobs\UpdateCompletionWebhookJob;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
 use App\Models\LeastCostChimps;
@@ -362,6 +364,9 @@ class CompletionController
         // Create the completion (not auto-accepted)
         $result = $service->create($data, $user, autoAccept: false);
 
+        // Dispatch webhook job
+        SendCompletionSubmissionWebhookJob::dispatch($result['completion_id']);
+
         return response()->json(['id' => $result['completion_id']], 201);
     }
 
@@ -546,6 +551,14 @@ class CompletionController
             // Attach players to new meta
             $newMeta->players()->attach($validated['players']);
 
+            // Dispatch webhook update if completion was pending and is now being accepted
+            if ($existingMeta->accepted_by_id === null && $acceptedBy !== null) {
+                $completion = Completion::find($existingMeta->completion_id);
+                if ($completion && $completion->wh_msg_id) {
+                    UpdateCompletionWebhookJob::dispatch($completion->id, fail: false);
+                }
+            }
+
             return response()->noContent();
         });
     }
@@ -601,6 +614,14 @@ class CompletionController
         if ($existingMeta->deleted_on === null) {
             $existingMeta->deleted_on = $now;
             $existingMeta->save();
+
+            // Only dispatch RED job if completion was pending
+            if ($existingMeta->accepted_by_id === null) {
+                $existingMeta->load('completion');
+                if ($existingMeta->completion->wh_msg_id) {
+                    UpdateCompletionWebhookJob::dispatch($existingMeta->completion_id, fail: true);
+                }
+            }
         }
 
         return response()->noContent();

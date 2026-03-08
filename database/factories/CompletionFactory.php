@@ -23,7 +23,8 @@ class CompletionFactory extends Factory
             'map_code' => fn() => Map::factory()->withMeta(),
             'submitted_on' => now(),
             'subm_notes' => null,
-            'subm_wh_payload' => null,
+            'wh_msg_id' => null,
+            'wh_data' => null,
             'copied_from_id' => null,
         ];
     }

@@ -2,36 +2,26 @@
 
 namespace App\Services\Discord;
 
-use App\Constants\DiscordColors;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class DiscordWebhookClient
 {
-    private const FAIL_COLOR = DiscordColors::FAIL;
-    private const ACCEPT_COLOR = DiscordColors::ACCEPT;
-
     protected static ?bool $fakeResult = null;
     protected static ?string $fakeMessageId = null;
 
     /**
-     * Update a Discord webhook message for a completion acceptance.
+     * Update a Discord webhook message.
      *
      * @param string $webhookUrl The webhook URL
      * @param string $messageId The message ID to update
-     * @param array $payload The original payload (with embeds)
-     * @param bool $fail Whether to show failed (red) or accepted (green) status
+     * @param array $payload The payload with embeds (color should already be set)
      * @return bool True if successful, false otherwise
      */
-    public function updateWebhookMessage(string $webhookUrl, string $messageId, array $payload, bool $fail = false): bool
+    public function updateWebhookMessage(string $webhookUrl, string $messageId, array $payload): bool
     {
         if (self::$fakeResult !== null) {
             return self::$fakeResult;
-        }
-
-        // Update the embed color
-        if (isset($payload['embeds'][0])) {
-            $payload['embeds'][0]['color'] = $fail ? self::FAIL_COLOR : self::ACCEPT_COLOR;
         }
 
         $response = Http::patch("{$webhookUrl}/messages/{$messageId}", $payload);

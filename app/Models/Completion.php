@@ -35,7 +35,8 @@ class Completion extends Model
     ];
 
     protected $hidden = [
-        'subm_wh_payload',
+        'wh_msg_id',
+        'wh_data',
         'copied_from_id',
         'proofs',
         'completionMetas',
@@ -46,7 +47,8 @@ class Completion extends Model
         'id',
         'map_code',
         'subm_notes',
-        'subm_wh_payload',
+        'wh_msg_id',
+        'wh_data',
         'copied_from_id',
     ];
 

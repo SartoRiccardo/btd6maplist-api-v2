@@ -6,6 +6,7 @@ use App\Constants\FormatConstants;
 use App\Models\Format;
 use App\Models\MapSubmission;
 use App\Models\User;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 use Tests\Traits\TestsDiscordAuthMiddleware;
 use PHPUnit\Metadata\Group;
@@ -13,6 +14,12 @@ use PHPUnit\Metadata\Group;
 class RejectTest extends TestCase
 {
     use TestsDiscordAuthMiddleware;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Bus::fake();
+    }
 
     protected function endpoint(): string
     {

@@ -6,6 +6,7 @@ use App\Http\Requests\MapSubmission\IndexMapSubmissionRequest;
 use App\Http\Requests\MapSubmission\StoreMapSubmissionRequest;
 use App\Jobs\DeleteMapSubmissionWebhookJob;
 use App\Jobs\SendMapSubmissionWebhookJob;
+use App\Jobs\UpdateMapSubmissionWebhookJob;
 use App\Models\MapSubmission;
 use App\Services\MapSubmission\MapSubmissionValidatorFactory;
 use App\Services\UserService;
@@ -321,6 +322,11 @@ class MapSubmissionController extends Controller
         // Reject the submission
         $submission->rejected_by = $user->discord_id;
         $submission->save();
+
+        // Update webhook to RED if webhook data exists
+        if ($submission->wh_msg_id) {
+            UpdateMapSubmissionWebhookJob::dispatch($submission->id, fail: true);
+        }
 
         return response()->noContent();
     }

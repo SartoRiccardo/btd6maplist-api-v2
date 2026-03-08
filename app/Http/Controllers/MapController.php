@@ -367,7 +367,7 @@ class MapController
             ]);
 
             // Create MapListMeta
-            MapListMeta::create([
+            $newMeta = MapListMeta::create([
                 'code' => $map->code,
                 'placement_curver' => $metaFields['placement_curver'] ?? null,
                 'placement_allver' => $metaFields['placement_allver'] ?? null,
@@ -386,6 +386,12 @@ class MapController
                 $metaFields['placement_allver'] ?? null,
                 $map->code,
                 $now
+            );
+
+            // Implicitly accept pending submissions
+            $mapService->implicitlyAcceptPendingSubmissions(
+                $newMeta,
+                existingMeta: null
             );
 
             // Handle remake_of cleanup
@@ -628,7 +634,7 @@ class MapController
                     $mapService->clearPreviousRemakeOf($newRemakeOf, $map->code, $now);
                 }
 
-                MapListMeta::create([
+                $newMeta = MapListMeta::create([
                     'code' => $map->code,
                     'placement_curver' => $getCurver ? $metaFields['placement_curver'] : $existingMeta->placement_curver,
                     'placement_allver' => $getAllver ? $metaFields['placement_allver'] : $existingMeta->placement_allver,
@@ -639,6 +645,12 @@ class MapController
                     'created_on' => $now,
                     'deleted_on' => null,
                 ]);
+
+                // Implicitly accept pending submissions
+                $mapService->implicitlyAcceptPendingSubmissions(
+                    $newMeta,
+                    existingMeta: $existingMeta
+                );
             }
 
             return response()->noContent();
@@ -878,9 +890,9 @@ class MapController
             ),
             copied_completions AS (
                 INSERT INTO completions
-                    (map_code, submitted_on, subm_notes, subm_wh_payload, copied_from_id)
+                    (map_code, submitted_on, subm_notes, wh_msg_id, wh_data, copied_from_id)
                 SELECT
-                    ?, c.submitted_on, c.subm_notes, c.subm_wh_payload, c.id
+                    ?, c.submitted_on, c.subm_notes, c.wh_msg_id, c.wh_data, c.id
                 FROM completions c
                 JOIN latest_completions cm
                     ON c.id = cm.completion_id

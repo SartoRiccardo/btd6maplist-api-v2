@@ -10,6 +10,7 @@ use App\Models\Map;
 use App\Models\MapListMeta;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 use Tests\Traits\TestsDiscordAuthMiddleware;
 use Tests\TestCase;
@@ -18,6 +19,12 @@ use PHPUnit\Metadata\Group;
 class SubmitCompletionTest extends TestCase
 {
     use TestsDiscordAuthMiddleware;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Bus::fake();
+    }
 
     protected function endpoint(): string
     {

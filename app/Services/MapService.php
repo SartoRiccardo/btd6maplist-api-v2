@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Constants\FormatConstants;
+use App\Jobs\UpdateMapSubmissionWebhookJob;
+use App\Models\Config;
 use App\Models\MapListMeta;
+use App\Models\MapSubmission;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -335,6 +338,80 @@ class MapService
             }
 
             throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * Implicitly accept pending map submissions when a map is added/updated on the list.
+     *
+     * When a map is added to a format and there's a pending submission for that format,
+     * the submission is implicitly accepted, webhook is updated to green, and linked to the new meta.
+     *
+     * @param MapListMeta $newMeta The newly created MapListMeta
+     * @param MapListMeta|null $existingMeta Existing meta for PUT (null for POST)
+     * @return void
+     */
+    public function implicitlyAcceptPendingSubmissions(
+        MapListMeta $newMeta,
+        ?MapListMeta $existingMeta = null
+    ): void {
+        // Determine which formats to check based on which fields are non-null
+        $formatIdsToCheck = [];
+
+        if ($newMeta->placement_curver !== null) {
+            $formatIdsToCheck[] = FormatConstants::MAPLIST;
+        }
+        if ($newMeta->placement_allver !== null) {
+            $formatIdsToCheck[] = FormatConstants::MAPLIST_ALL_VERSIONS;
+        }
+        if ($newMeta->difficulty !== null) {
+            $formatIdsToCheck[] = FormatConstants::EXPERT_LIST;
+        }
+        if ($newMeta->botb_difficulty !== null) {
+            $formatIdsToCheck[] = FormatConstants::BEST_OF_THE_BEST;
+        }
+        if ($newMeta->remake_of !== null) {
+            $formatIdsToCheck[] = FormatConstants::NOSTALGIA_PACK;
+        }
+
+        // Single query to get all pending submissions for this map across all relevant formats
+        $pendingSubmissions = MapSubmission::where('code', $newMeta->code)
+            ->whereIn('format_id', $formatIdsToCheck)
+            ->withStatus('pending')
+            ->get();
+
+        foreach ($pendingSubmissions as $pendingSubmission) {
+            if (!$pendingSubmission || !$pendingSubmission->wh_msg_id) {
+                continue;
+            }
+
+            // Check if format requires placement validation
+            $shouldAccept = true;
+
+            if (in_array($formatId, [FormatConstants::MAPLIST, FormatConstants::MAPLIST_ALL_VERSIONS])) {
+                $mapCount = Config::loadVars(['map_count'])->get('map_count', 50);
+                $placement = $formatId === FormatConstants::MAPLIST
+                    ? $newMeta->placement_curver
+                    : $newMeta->placement_allver;
+
+                $shouldAccept = $placement !== null && $placement <= $mapCount;
+            }
+
+            if (!$shouldAccept) {
+                continue;
+            }
+
+            // Accept the submission
+            UpdateMapSubmissionWebhookJob::dispatch($pendingSubmission->id, fail: false);
+            $pendingSubmission->accepted_meta_id = $newMeta->id;
+            $pendingSubmission->save();
+
+            Log::info('Implicitly accepted map submission', [
+                'map_code' => $newMeta->code,
+                'format_id' => $formatId,
+                'submission_id' => $pendingSubmission->id,
+                'meta_id' => $newMeta->id,
+            ]);
         }
     }
 }
