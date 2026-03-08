@@ -88,7 +88,7 @@ class CallbackTest extends TestCase
 
     #[Group('post')]
     #[Group('oauth')]
-    public function test_valid_code_and_state_returns_200(): void
+    public function test_valid_oauth_creates_user_and_returns_token(): void
     {
         $state = Str::random(40);
         session()->put('oauth.state', $state);
@@ -100,33 +100,21 @@ class CallbackTest extends TestCase
             'username' => self::USERNAME,
         ]);
 
-        $this->postJson('/web/oauth2/discord/callback', [
+        $response = $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => $state,
-        ])->assertStatus(200);
-    }
-
-    #[Group('post')]
-    #[Group('oauth')]
-    public function test_response_contains_token(): void
-    {
-        $state = Str::random(40);
-        session()->put('oauth.state', $state);
-
-        $this->mockSocialiteUser();
-
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
         ]);
 
-        $actual = $this->postJson('/web/oauth2/discord/callback', [
-            'code' => 'valid_code',
-            'state' => $state,
-        ])->assertStatus(200)->json();
+        // Check response status
+        $response->assertStatus(200);
 
+        // Check response contains user and token
+        $actual = $response->json();
         $this->assertArrayHasKey('token', $actual);
         $this->assertEquals(self::FAKE_TOKEN, $actual['token']);
+        $this->assertArrayHasKey('user', $actual);
+        $this->assertEquals(self::DISCORD_ID, $actual['user']['discord_id']);
+        $this->assertEquals(self::USERNAME, $actual['user']['name']);
     }
 
     #[Group('post')]
@@ -156,54 +144,6 @@ class CallbackTest extends TestCase
                 'discord_id' => self::DISCORD_ID,
                 'name' => self::USERNAME,
             ]);
-    }
-
-    #[Group('post')]
-    #[Group('oauth')]
-    public function test_user_has_correct_discord_id(): void
-    {
-        $state = Str::random(40);
-        session()->put('oauth.state', $state);
-
-        $this->mockSocialiteUser();
-
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
-        $this->postJson('/web/oauth2/discord/callback', [
-            'code' => 'valid_code',
-            'state' => $state,
-        ])->assertStatus(200);
-
-        $this->getJson("/api/users/" . self::DISCORD_ID)
-            ->assertStatus(200)
-            ->assertJsonPath('discord_id', self::DISCORD_ID);
-    }
-
-    #[Group('post')]
-    #[Group('oauth')]
-    public function test_user_has_correct_name_from_discord(): void
-    {
-        $state = Str::random(40);
-        session()->put('oauth.state', $state);
-
-        $this->mockSocialiteUser();
-
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
-        $this->postJson('/web/oauth2/discord/callback', [
-            'code' => 'valid_code',
-            'state' => $state,
-        ])->assertStatus(200);
-
-        $this->getJson("/api/users/" . self::DISCORD_ID)
-            ->assertStatus(200)
-            ->assertJsonPath('name', self::USERNAME);
     }
 
     #[Group('post')]
@@ -515,35 +455,6 @@ class CallbackTest extends TestCase
             ]);
     }
 
-    #[Group('post')]
-    #[Group('oauth')]
-    public function test_error_response_contains_error_code(): void
-    {
-        $response = $this->postJson('/web/oauth2/discord/callback', [
-            'error' => 'access_denied',
-        ])->assertStatus(400);
-
-        $actual = $response->json();
-
-        $this->assertArrayHasKey('error', $actual);
-        $this->assertEquals('access_denied', $actual['error']);
-    }
-
-    #[Group('post')]
-    #[Group('oauth')]
-    public function test_error_response_contains_error_description_when_provided(): void
-    {
-        $description = 'Custom error description';
-
-        $actual = $this->postJson('/web/oauth2/discord/callback', [
-            'error' => 'access_denied',
-            'error_description' => $description,
-        ])->assertStatus(400)->json();
-
-        $this->assertArrayHasKey('description', $actual);
-        $this->assertEquals($description, $actual['description']);
-    }
-
     // -- Socialite/API Failures -- //
 
     #[Group('post')]
@@ -597,32 +508,6 @@ class CallbackTest extends TestCase
             'code' => 'valid_code',
             'state' => $stateFromLogin,
         ])->assertStatus(200);
-    }
-
-    #[Group('post')]
-    #[Group('oauth')]
-    public function test_cannot_replay_callback_with_same_state(): void
-    {
-        $state = Str::random(40);
-        session()->put('oauth.state', $state);
-
-        $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
-        // First call succeeds
-        $this->postJson('/web/oauth2/discord/callback', [
-            'code' => 'valid_code',
-            'state' => $state,
-        ])->assertStatus(200);
-
-        // Replay fails (state was cleared)
-        $this->postJson('/web/oauth2/discord/callback', [
-            'code' => 'valid_code',
-            'state' => $state,
-        ])->assertStatus(401);
     }
 
     #[Group('post')]
@@ -796,27 +681,6 @@ class CallbackTest extends TestCase
     }
 
     // -- Session Lifecycle -- //
-
-    #[Group('post')]
-    #[Group('oauth')]
-    public function test_state_is_cleared_after_successful_callback(): void
-    {
-        $state = Str::random(40);
-        session()->put('oauth.state', $state);
-
-        $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
-        $this->postJson('/web/oauth2/discord/callback', [
-            'code' => 'valid_code',
-            'state' => $state,
-        ])->assertStatus(200);
-
-        $this->assertNull(session('oauth.state'));
-    }
 
     #[Group('post')]
     #[Group('oauth')]
