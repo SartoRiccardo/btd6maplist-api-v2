@@ -14,7 +14,7 @@ use Illuminate\Validation\Validator;
  *     @OA\Property(
  *         property="name",
  *         type="string",
- *         maxLength=20,
+ *         maxLength=50,
  *         description="Display name (must be unique, case-insensitive)",
  *         example="JohnDoe"
  *     ),
@@ -35,7 +35,7 @@ class UpdateUserRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:20'],
+            'name' => ['required', 'string', 'max:50'],
             'nk_oak' => ['nullable', 'string'],
         ];
     }

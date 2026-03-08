@@ -1144,13 +1144,6 @@ class StoreMapTest extends TestCase
 
     #[Group('store')]
     #[Group('maps')]
-    public function test_store_map_that_was_a_submission_dispatches_accept_submission_job(): void
-    {
-        $this->markTestIncomplete('Feature not yet implemented: dispatch accept submission job when storing a map that was a submission');
-    }
-
-    #[Group('store')]
-    #[Group('maps')]
     public function test_map_store_fails_if_all_meta_fields_are_null(): void
     {
         $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:map']]);
@@ -1231,16 +1224,5 @@ class StoreMapTest extends TestCase
                     'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
                 ],
             ]);
-    }
-
-    /**
-     * Map was submitted in another format, and we're setting a value for a different format.
-     * Should NOT dispatch accept submission job.
-     */
-    #[Group('store')]
-    #[Group('maps')]
-    public function test_store_map_from_different_format_submission_does_not_dispatch_job(): void
-    {
-        $this->markTestIncomplete('Feature not yet implemented: no job dispatched when setting value for format different from submission format');
     }
 }

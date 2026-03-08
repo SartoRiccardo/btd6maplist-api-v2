@@ -185,6 +185,10 @@ class WebhookUpdateTest extends TestCase
      * 
      * Cool edge case I didn't think about.
      */
+    /**
+     * Map is already on the list in a format, and we update that same format's value.
+     * Should NOT dispatch accept submission job (only triggers on newly added formats).
+     */
     #[Group('webhook')]
     #[Group('map_submissions')]
     public function test_put_map_with_submission_on_same_format_dispatches_green_job_and_links_meta(): void
@@ -227,14 +231,11 @@ class WebhookUpdateTest extends TestCase
             ])
             ->assertStatus(204);
 
-        Bus::assertDispatched(UpdateMapSubmissionWebhookJob::class, function ($job) use ($submission) {
-            $this->assertEquals($submission->id, $job->submissionId);
-            $this->assertFalse($job->fail);
-            return true;
-        });
+        // Should NOT dispatch because format was already on the list
+        Bus::assertNotDispatched(UpdateMapSubmissionWebhookJob::class);
 
         $submission->refresh();
-        $this->assertNotNull($submission->accepted_meta_id);
+        $this->assertNull($submission->accepted_meta_id);
     }
 
     #[Group('webhook')]
@@ -281,6 +282,52 @@ class WebhookUpdateTest extends TestCase
             ])
             ->assertStatus(201);
 
+        Bus::assertNotDispatched(UpdateMapSubmissionWebhookJob::class);
+
+        $submission->refresh();
+        $this->assertNull($submission->accepted_meta_id);
+    }
+
+    #[Group('webhook')]
+    #[Group('map_submissions')]
+    public function test_put_map_with_submission_on_different_format_does_nothing(): void
+    {
+        Bus::fake();
+        $now = Carbon::now();
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:map'], FormatConstants::EXPERT_LIST => ['edit:map']]);
+        $map = Map::factory()->create();
+        $maplistFormat = Format::find(FormatConstants::MAPLIST);
+        $expertFormat = Format::find(FormatConstants::EXPERT_LIST);
+
+        $maplistFormat->map_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $maplistFormat->save();
+        $expertFormat->save();
+
+        // Create existing meta with MAPLIST placement
+        MapListMeta::factory()->create([
+            'code' => $map->code,
+            'placement_curver' => 10,
+            'created_on' => $now->copy()->subHour(),
+        ]);
+
+        // Create pending submission for MAPLIST format
+        $submission = MapSubmission::factory()->pending()->create([
+            'code' => $map->code,
+            'format_id' => $maplistFormat->id,
+            'wh_msg_id' => '123456',
+            'wh_data' => json_encode(['embeds' => [['color' => 0x1e88e5]]]),
+        ]);
+
+        // Update map to add EXPERT_LIST (different format than submission)
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/maps/{$map->code}", [
+                'name' => 'Updated Map',
+                'difficulty' => 1,
+            ])
+            ->assertStatus(204);
+
+        // Should NOT dispatch job because submission is for MAPLIST, not EXPERT_LIST
         Bus::assertNotDispatched(UpdateMapSubmissionWebhookJob::class);
 
         $submission->refresh();

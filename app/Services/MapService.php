@@ -355,22 +355,31 @@ class MapService
         MapListMeta $newMeta,
         ?MapListMeta $existingMeta = null
     ): void {
-        // Determine which formats to check based on which fields are non-null
+        // Determine which formats changed (were added or newly set)
         $formatIdsToCheck = [];
 
-        if ($newMeta->placement_curver !== null) {
+        // Newly added MAPLIST
+        if ($newMeta->placement_curver !== null && ($existingMeta === null || $existingMeta->placement_curver === null)) {
             $formatIdsToCheck[] = FormatConstants::MAPLIST;
         }
-        if ($newMeta->placement_allver !== null) {
+
+        // Newly added MAPLIST_ALL_VERSIONS
+        if ($newMeta->placement_allver !== null && ($existingMeta === null || $existingMeta->placement_allver === null)) {
             $formatIdsToCheck[] = FormatConstants::MAPLIST_ALL_VERSIONS;
         }
-        if ($newMeta->difficulty !== null) {
+
+        // Newly added EXPERT_LIST
+        if ($newMeta->difficulty !== null && ($existingMeta === null || $existingMeta->difficulty === null)) {
             $formatIdsToCheck[] = FormatConstants::EXPERT_LIST;
         }
-        if ($newMeta->botb_difficulty !== null) {
+
+        // Newly added BEST_OF_THE_BEST
+        if ($newMeta->botb_difficulty !== null && ($existingMeta === null || $existingMeta->botb_difficulty === null)) {
             $formatIdsToCheck[] = FormatConstants::BEST_OF_THE_BEST;
         }
-        if ($newMeta->remake_of !== null) {
+
+        // Newly added NOSTALGIA_PACK
+        if ($newMeta->remake_of !== null && ($existingMeta === null || $existingMeta->remake_of === null)) {
             $formatIdsToCheck[] = FormatConstants::NOSTALGIA_PACK;
         }
 

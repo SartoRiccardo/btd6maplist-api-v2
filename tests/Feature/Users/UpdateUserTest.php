@@ -228,11 +228,11 @@ class UpdateUserTest extends TestCase
         $user = $this->createUserWithPermissions([null => ['edit:self']]);
 
         $this->actingAs($user, 'discord')
-            ->putJson('/api/users/@me', ['name' => str_repeat('a', 21)])
+            ->putJson('/api/users/@me', ['name' => str_repeat('a', 51)])
             ->assertStatus(422)
             ->assertJson([
                 'errors' => [
-                    'name' => ['The name field must not be greater than 20 characters.'],
+                    'name' => ['The name field must not be greater than 50 characters.'],
                 ],
             ]);
     }
