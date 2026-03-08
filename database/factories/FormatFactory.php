@@ -31,6 +31,12 @@ class FormatFactory extends Factory
                 ["Beginner", "Intermediate", "Advanced"],
                 ["Casual", "Regular", "Expert"],
             ]),
+            'slug' => '',
+            'description' => '',
+            'button_text' => 'Submit',
+            'map_submission_rules' => '',
+            'completion_submission_rules' => '',
+            'discord_server_url' => null,
         ];
     }
 
@@ -39,7 +45,7 @@ class FormatFactory extends Factory
      */
     public function hidden(): self
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'hidden' => true,
         ]);
     }
@@ -49,7 +55,7 @@ class FormatFactory extends Factory
      */
     public function openSubmissions(): self
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'run_submission_status' => 'open',
             'map_submission_status' => 'open',
         ]);

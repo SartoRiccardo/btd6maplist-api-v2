@@ -78,7 +78,7 @@ class FormatController
             'include' => ['nullable', 'string', 'in:webhooks'],
         ]);
 
-        $format = Format::find($id);
+        $format = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])->find($id);
         if (!$format) {
             return response()->json(['message' => 'Not Found'], 404);
         }
@@ -104,14 +104,14 @@ class FormatController
      * @OA\Put(
      *     path="/formats/{id}",
      *     summary="Update format",
-     *     description="Updates format configuration. Requires edit:config permission for the format.",
+     *     description="Updates format configuration. Config fields (name, webhooks, hidden, statuses, emoji, proposed_difficulties) require edit:config permission. Presentation fields (slug, description, button_text, preview_maps, rules, discord_server_url) require edit:format_presentation permission.",
      *     tags={"Formats"},
      *     security={{"discordAuth":{}}},
      *     @OA\Parameter(name="id", in="path", required=true, description="Format ID", @OA\Schema(type="integer", example=1)),
      *     @OA\RequestBody(@OA\JsonContent(ref="#/components/schemas/UpdateFormatRequest")),
      *     @OA\Response(response=204, description="Format updated successfully"),
      *     @OA\Response(response=401, description="Authentication required"),
-     *     @OA\Response(response=403, description="Missing edit:config permission"),
+     *     @OA\Response(response=403, description="Missing required permission (edit:config or edit:format_presentation)"),
      *     @OA\Response(response=404, description="Format not found"),
      *     @OA\Response(response=422, description="Validation error")
      * )
@@ -124,11 +124,28 @@ class FormatController
             return response()->json(['message' => 'Not Found'], 404);
         }
 
-        if (!$user->hasPermission('edit:config', $format->id)) {
+        $validated = $request->validated();
+
+        // Separate fields by permission
+        $configFields = ['name', 'map_submission_wh', 'run_submission_wh', 'hidden', 'run_submission_status', 'map_submission_status', 'emoji', 'proposed_difficulties'];
+        $presentationFields = ['slug', 'description', 'button_text', 'preview_map_1_code', 'preview_map_2_code', 'preview_map_3_code', 'map_submission_rules', 'completion_submission_rules', 'discord_server_url'];
+
+        $configData = array_intersect_key($validated, array_flip($configFields));
+        $presentationData = array_intersect_key($validated, array_flip($presentationFields));
+
+        // Check permissions for each field group
+        $updatingConfigFields = !empty(array_filter($configData, fn($v) => $v !== null));
+        $updatingPresentationFields = !empty(array_filter($presentationData, fn($v) => $v !== null));
+
+        if ($updatingConfigFields && !$user->hasPermission('edit:config', $format->id)) {
             return response()->json(['message' => 'Forbidden - Missing edit:config permission for this format.'], 403);
         }
 
-        $format->update($request->validated());
+        if ($updatingPresentationFields && !$user->hasPermission('edit:format_presentation', $format->id)) {
+            return response()->json(['message' => 'Forbidden - Missing edit:format_presentation permission for this format.'], 403);
+        }
+
+        $format->update($validated);
 
         return response()->noContent();
     }

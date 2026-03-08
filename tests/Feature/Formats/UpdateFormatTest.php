@@ -147,10 +147,10 @@ class UpdateFormatTest extends TestCase
             ->assertStatus(200)
             ->json();
 
-        $expected = [
+        $expected = Format::jsonStructure([
             'id' => $this->testFormat->id,
             ...$payload,
-        ];
+        ]);
         $this->assertEquals($expected, $actual);
     }
 
@@ -278,10 +278,10 @@ class UpdateFormatTest extends TestCase
             ->assertStatus(200)
             ->json();
 
-        $expected = [
+        $expected = Format::jsonStructure([
             'id' => $this->testFormat->id,
             ...$payload,
-        ];
+        ]);
         $this->assertEquals($expected, $actual);
     }
 }
