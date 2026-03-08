@@ -3,7 +3,6 @@
 namespace Tests\Feature\OAuth;
 
 use App\Models\User;
-use App\Services\Discord\DiscordApiClient;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\ProviderInterface;
@@ -22,7 +21,6 @@ class CallbackTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        DiscordApiClient::clearFake();
     }
 
     /**
@@ -64,12 +62,12 @@ class CallbackTest extends TestCase
     /**
      * Convenience method to mock Socialite with a user.
      */
-    protected function mockSocialiteUser(): void
+    protected function mockSocialiteUser(?string $username = null): void
     {
         $fakeUser = (new SocialiteUser)->map([
             'id' => self::DISCORD_ID,
-            'nickname' => self::USERNAME,
-            'name' => self::USERNAME,
+            'nickname' => $username ?? self::USERNAME,
+            'name' => $username ?? self::USERNAME,
             'email' => 'test@example.com',
         ])->setToken(self::FAKE_TOKEN);
 
@@ -94,11 +92,6 @@ class CallbackTest extends TestCase
         session()->put('oauth.state', $state);
 
         $this->mockSocialiteUser();
-
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
 
         $response = $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -126,11 +119,6 @@ class CallbackTest extends TestCase
 
         $this->mockSocialiteUser();
 
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
         $this->getJson("/api/users/" . self::DISCORD_ID)->assertStatus(404);
 
         $this->postJson('/web/oauth2/discord/callback', [
@@ -155,11 +143,6 @@ class CallbackTest extends TestCase
 
         $this->mockSocialiteUser();
 
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => $state,
@@ -179,11 +162,6 @@ class CallbackTest extends TestCase
 
         $this->mockSocialiteUser();
 
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => $state,
@@ -202,11 +180,6 @@ class CallbackTest extends TestCase
         session()->put('oauth.state', $state);
 
         $this->mockSocialiteUser();
-
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
 
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -235,11 +208,6 @@ class CallbackTest extends TestCase
 
         $this->mockSocialiteUser();
 
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => $state,
@@ -261,11 +229,6 @@ class CallbackTest extends TestCase
         ]);
 
         $this->mockSocialiteUser();
-
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
 
         $actual = $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -352,11 +315,7 @@ class CallbackTest extends TestCase
     public function test_invalid_unknown_state_returns_401_with_invalid_state_error(): void
     {
         $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => 'unknown_state',
@@ -375,11 +334,7 @@ class CallbackTest extends TestCase
         session()->put('oauth.state', $storedState);
 
         $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => 'different_state',
@@ -398,11 +353,7 @@ class CallbackTest extends TestCase
         session()->put('oauth.state', $state);
 
         $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         // First call succeeds
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -424,11 +375,7 @@ class CallbackTest extends TestCase
         session()->forget('oauth.state');
 
         $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => 'some_state',
@@ -499,11 +446,7 @@ class CallbackTest extends TestCase
         $stateFromLogin = $matches[1];
 
         // Callback - use same state
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => $stateFromLogin,
@@ -519,11 +462,7 @@ class CallbackTest extends TestCase
 
         // Set up mock once
         $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         // First callback succeeds
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -553,11 +492,7 @@ class CallbackTest extends TestCase
         // State should still be in session
         $this->assertEquals($stateFromLogin, session('oauth.state'));
 
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => $stateFromLogin,
@@ -573,11 +508,7 @@ class CallbackTest extends TestCase
         $state = Str::random(40);
         session()->put('oauth.state', $state);
 
-        $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => 'Username123',
-        ]);
+        $this->mockSocialiteUser('Username123');
 
         $actual = $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -594,12 +525,7 @@ class CallbackTest extends TestCase
         $state = Str::random(40);
         session()->put('oauth.state', $state);
 
-        $this->mockSocialiteUser();
-        $longUsername = str_repeat('a', 150);
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => $longUsername,
-        ]);
+        $this->mockSocialiteUser(str_repeat('a', 150));
 
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -614,12 +540,7 @@ class CallbackTest extends TestCase
         $state = Str::random(40);
         session()->put('oauth.state', $state);
 
-        $this->mockSocialiteUser();
-        $specialUsername = 'Test_User-123.测试';
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => $specialUsername,
-        ]);
+        $this->mockSocialiteUser('Test_User-123.测试');
 
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -634,12 +555,7 @@ class CallbackTest extends TestCase
         $state = Str::random(40);
         session()->put('oauth.state', $state);
 
-        $this->mockSocialiteUser();
-        $unicodeUsername = 'ユーザー名'; // Japanese username
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => $unicodeUsername,
-        ]);
+        $this->mockSocialiteUser('ユーザー名'); // Japanese username
 
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -657,11 +573,7 @@ class CallbackTest extends TestCase
         session()->put('oauth.state', $state);
 
         $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         // Simulate two concurrent requests
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
@@ -711,11 +623,7 @@ class CallbackTest extends TestCase
         session()->put('oauth.state', $state);
 
         $this->mockSocialiteUser();
-        DiscordApiClient::fake([
-            'id' => self::DISCORD_ID,
-            'username' => self::USERNAME,
-        ]);
-
+        
         $this->postJson('/web/oauth2/discord/callback', [
             'code' => 'valid_code',
             'state' => $state,

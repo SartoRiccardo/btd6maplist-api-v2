@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Laravel\Socialite\Facades\Socialite;
-use App\Services\Discord\DiscordApiClient;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -99,17 +98,17 @@ class OAuthController extends Controller
 
         try {
             $socialiteUser = Socialite::driver('discord')->stateless()->user();
-            $token = $socialiteUser->token;
 
-            $discordProfile = DiscordApiClient::getUserProfile($token);
             $user = User::firstOrCreate(
-                ['discord_id' => $discordProfile['id']],
+                ['discord_id' => $socialiteUser->id],
                 [
-                    'name' => $discordProfile['username'],
+                    'name' => $socialiteUser->name,
                     'has_seen_popup' => false,
                     'is_banned' => false,
                 ]
             );
+
+            $token = $socialiteUser->token;
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'oauth_failed',
