@@ -9,6 +9,7 @@ use App\Models\Format;
 use App\Models\Map;
 use App\Models\MapListMeta;
 use App\Models\MapSubmission;
+use App\Models\RetroMap;
 use App\Models\User;
 use App\Services\Discord\DiscordWebhookClient;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
@@ -332,5 +333,100 @@ class WebhookUpdateTest extends TestCase
 
         $submission->refresh();
         $this->assertNull($submission->accepted_meta_id);
+    }
+
+    // ========== NON-PENDING MAP SUBMISSION WEBHOOK TESTS ==========
+
+    #[Group('webhook')]
+    #[Group('map_submissions')]
+    public function test_post_map_does_not_dispatch_submission_webhooks_for_non_pending_submissions(): void
+    {
+        Bus::fake();
+
+        $user = $this->createUserWithPermissions([FormatConstants::EXPERT_LIST => ['edit:map']]);
+        $mapCode = 'TEST' . rand(1000, 9999);
+        $format = Format::find(FormatConstants::EXPERT_LIST);
+        $format->map_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        // Create an accepted submission
+
+        MapSubmission::factory()->create([
+            'code' => $mapCode,
+            'format_id' => $format->id,
+            'wh_msg_id' => 123456789,
+            'wh_data' => json_encode(['embeds' => [['color' => 0x43a047]]]),
+            'accepted_meta_id' => MapListMeta::factory()->create(),  // No clue how this would happen
+        ]);
+
+        // Create a rejected submission
+        MapSubmission::factory()->create([
+            'code' => $mapCode,
+            'format_id' => $format->id,
+            'wh_msg_id' => 987654321,
+            'wh_data' => json_encode(['embeds' => [['color' => 0xb71c1c]]]),
+            'rejected_by' => User::factory()->create()->discord_id,
+        ]);
+
+        // POST to add map to Expert List - this should NOT dispatch webhook jobs for non-pending submissions
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps', [
+                'code' => $mapCode,
+                'name' => 'Test Map',
+                'difficulty' => 2,
+            ])
+            ->assertStatus(201);
+
+        // Should NOT dispatch map submission webhook jobs for non-pending submissions
+        Bus::assertNotDispatched(UpdateMapSubmissionWebhookJob::class);
+    }
+
+    #[Group('webhook')]
+    #[Group('map_submissions')]
+    public function test_put_map_does_not_dispatch_submission_webhooks_for_non_pending_submissions(): void
+    {
+        Bus::fake();
+        $now = Carbon::now();
+
+        $user = $this->createUserWithPermissions([FormatConstants::EXPERT_LIST => ['edit:map']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::EXPERT_LIST);
+        $format->map_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        // Create existing meta without difficulty (null) - map exists but not on Expert List
+        MapListMeta::factory()->create([
+            'code' => $map->code,
+            'difficulty' => null,
+            'created_on' => $now->copy()->subHour(),
+        ]);
+
+        MapSubmission::factory()->create([
+            'code' => $map->code,
+            'format_id' => $format->id,
+            'wh_msg_id' => 111111111,
+            'wh_data' => json_encode(['embeds' => [['color' => 0x43a047]]]),
+            'accepted_meta_id' => MapListMeta::factory()->create(),
+        ]);
+
+        // Create a rejected submission
+        MapSubmission::factory()->create([
+            'code' => $map->code,
+            'format_id' => $format->id,
+            'wh_msg_id' => 222222222,
+            'wh_data' => json_encode(['embeds' => [['color' => 0xb71c1c]]]),
+            'rejected_by' => User::factory()->create()->discord_id,
+        ]);
+
+        // PUT to add map to Expert List - this should NOT dispatch webhook jobs for non-pending submissions
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/maps/{$map->code}", [
+                'name' => 'Updated Map',
+                'difficulty' => 2,
+            ])
+            ->assertStatus(204);
+
+        // Should NOT dispatch map submission webhook jobs for non-pending submissions
+        Bus::assertNotDispatched(UpdateMapSubmissionWebhookJob::class);
     }
 }
