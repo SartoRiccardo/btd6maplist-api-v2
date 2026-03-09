@@ -16,6 +16,7 @@
         "laravel/tinker": "^2.10.1"
     },
     "require-dev": {
+        "darkaonline/l5-swagger": "*",
         "fakerphp/faker": "^1.23",
         "laravel/boost": "^2.0",
         "laravel/pail": "^1.2.2",
