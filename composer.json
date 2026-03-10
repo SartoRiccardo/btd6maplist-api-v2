@@ -14,6 +14,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "*",
         "laravel/tinker": "^2.10.1",
+        "predis/predis": "*",
         "socialiteproviders/discord": "*"
     },
     "require-dev": {
