@@ -6,6 +6,7 @@ use App\Models\Completion;
 use App\Models\CompletionMeta;
 use App\Models\LeastCostChimps;
 use App\Models\User;
+use App\Services\Discord\DiscordApiClient;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
 use Tests\TestCase;
 use Illuminate\Support\Facades\Http;
@@ -359,5 +360,47 @@ class ShowTest extends TestCase
         ]);
 
         $this->assertEquals($expected, $actual);
+    }
+
+    // ========== @me ALIAS TESTS ==========
+
+    #[Group('get')]
+    #[Group('users')]
+    #[Group('auth')]
+    public function test_at_me_without_auth_returns_401(): void
+    {
+        $this->getJson('/api/users/@me')
+            ->assertStatus(401)
+            ->assertJson(['message' => 'Unauthorized']);
+    }
+
+    #[Group('get')]
+    #[Group('users')]
+    #[Group('auth')]
+    public function test_at_me_with_valid_auth_returns_user_profile(): void
+    {
+        $user = User::factory()->create(['name' => 'TestUser123']);
+
+        $this->actingAs($user, 'discord')
+            ->getJson('/api/users/@me')
+            ->assertStatus(200)
+            ->assertJson([
+                'discord_id' => $user->discord_id,
+                'name' => 'TestUser123',
+                'is_banned' => false,
+            ]);
+    }
+
+    #[Group('get')]
+    #[Group('users')]
+    #[Group('auth')]
+    public function test_at_me_with_invalid_token_returns_401(): void
+    {
+        DiscordApiClient::fakeFailure();
+
+        $this->withToken('invalid_token_123')
+            ->getJson('/api/users/@me')
+            ->assertStatus(401)
+            ->assertJson(['message' => 'Unauthorized']);
     }
 }

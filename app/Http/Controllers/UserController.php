@@ -11,20 +11,25 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @OA\PathItem(
+ *     path="/users/{id}",
+ * )
+ */
 class UserController
 {
     /**
      * @OA\Get(
      *     path="/users/{id}",
      *     summary="Get user by ID",
-     *     description="Returns a user's profile data including their platform roles. If the user has a Ninja Kiwi OAK set and 'flair' is in the include parameter, avatar and banner URLs are fetched from the Ninja Kiwi API. If 'medals' is included, medal statistics are calculated for the specified timestamp.",
+     *     description="Returns a user's profile data including their platform roles. If the user has a Ninja Kiwi OAK set and 'flair' is in the include parameter, avatar and banner URLs are fetched from the Ninja Kiwi API. If 'medals' is included, medal statistics are calculated for the specified timestamp. The {id} parameter can be '@me' to get the authenticated user's profile (requires authentication).",
      *     tags={"Users"},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
      *         required=true,
-     *         description="The user's Discord ID",
-     *         @OA\Schema(type="string", example="123456789012345678")
+     *         description="The user's Discord ID or '@me' for the authenticated user",
+     *         @OA\Schema(type="string", example="@me")
      *     ),
      *     @OA\Parameter(
      *         name="include",
@@ -48,6 +53,7 @@ class UserController
      *             @OA\Schema(ref="#/components/schemas/User")
      *         )
      *     ),
+     *     @OA\Response(response="401", description="Unauthorized - @me used without authentication"),
      *     @OA\Response(response="404", description="User not found")
      * )
      */
@@ -57,6 +63,15 @@ class UserController
         $includeFlair = in_array('flair', $includes, true);
         $includeMedals = in_array('medals', $includes, true);
         $includeAchRoles = in_array('achievement_roles', $includes, true);
+
+        // Resolve @me alias
+        if ($id === '@me') {
+            $user = auth()->guard('discord')->user();
+            if (!$user) {
+                return response()->json(['message' => 'Unauthorized'], 401);
+            }
+            $id = $user->discord_id;
+        }
 
         // Default timestamp to now, similar to CompletionController
         $timestamp = $request->query('timestamp', Carbon::now()->unix());
