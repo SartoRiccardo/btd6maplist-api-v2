@@ -34,7 +34,7 @@ class OAuthController extends Controller
 
         $url = Socialite::driver('discord')
             ->setScopes(['identify'])
-            ->withState($state)
+            ->with(['state' => $state])
             ->redirect()
             ->getTargetUrl();
 

@@ -11,11 +11,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-/**
- * @OA\PathItem(
- *     path="/users/{id}",
- * )
- */
 class UserController
 {
     /**
