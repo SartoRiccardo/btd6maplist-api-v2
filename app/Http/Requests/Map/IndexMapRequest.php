@@ -9,7 +9,7 @@ use App\Http\Requests\BaseRequest;
  *     schema="IndexMapRequest",
  *     @OA\Property(property="timestamp", type="integer", description="Unix timestamp to filter maps active at this time", example=1736123456),
  *     @OA\Property(property="format_id", type="integer", description="Format ID filter", example=1),
- *     @OA\Property(property="format_subfilter", type="integer", description="Format subfilter (difficulty for Expert List, botb_difficulty for BOTB, game_id for Nostalgia Pack)", example=1),
+ *     @OA\Property(property="format_subfilter", type="string", description="Comma-separated format subfilters (difficulty for Expert List, botb_difficulty for BOTB, game_id for Nostalgia Pack)", example="0,2,4"),
  *     @OA\Property(property="page", type="integer", description="Page number", example=1, minimum=1),
  *     @OA\Property(property="per_page", type="integer", description="Items per page", example=100, minimum=1, maximum=500),
  *     @OA\Property(property="deleted", type="string", enum={"only", "exclude", "any"}, description="Filter by deletion status", example="exclude"),

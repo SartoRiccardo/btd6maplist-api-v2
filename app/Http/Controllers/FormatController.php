@@ -41,7 +41,7 @@ class FormatController
         $page = $validated['page'];
         $perPage = $validated['per_page'];
 
-        $formats = Format::query()
+        $formats = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])
             ->orderBy('id')
             ->paginate($perPage, ['*'], 'page', $page);
 

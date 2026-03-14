@@ -31,6 +31,7 @@ class OAuthController extends Controller
     {
         $state = Str::random(40);
         session()->put('oauth.state', $state);
+        session()->save();
 
         $url = Socialite::driver('discord')
             ->setScopes(['identify'])

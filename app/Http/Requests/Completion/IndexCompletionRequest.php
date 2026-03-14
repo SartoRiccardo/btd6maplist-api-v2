@@ -71,7 +71,7 @@ class IndexCompletionRequest extends BaseRequest
             'sort_by' => ['nullable', 'in:created_on'],
             'sort_order' => ['nullable', 'in:asc,desc'],
             'include' => ['nullable', 'array'],
-            'include.*' => ['string', 'in:map.metadata'],
+            'include.*' => ['string', 'in:map.metadata,players.flair'],
         ];
     }
 

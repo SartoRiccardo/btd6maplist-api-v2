@@ -163,6 +163,18 @@ class CompletionController
                 ->pluck('id');
         }
 
+        // Append flair to players if requested
+        $includePlayersFlair = in_array('players.flair', $include);
+        if ($includePlayersFlair) {
+            $userService = app(UserService::class);
+            foreach ($metaPaginated as $meta) {
+                foreach ($meta->players as $player) {
+                    $player->appendFlair();
+                    $userService->refreshUserCache($player);
+                }
+            }
+        }
+
         // Build data array from paginated metas
         $data = $metaPaginated->map(function ($meta) use ($mapMetadataByKey, $currentLccIds) {
             $completion = $meta->completion;

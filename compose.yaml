@@ -23,3 +23,7 @@ services:
             POSTGRES_PASSWORD: btd6maplist-test
             PGDATA: /data/postgres
             POSTGRES_DB: btd6maplist-test
+    redis:
+        image: redis
+        ports:
+            - "6379:6379"

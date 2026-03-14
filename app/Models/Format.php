@@ -42,9 +42,6 @@ class Format extends Model
         'preview_map_1_code',
         'preview_map_2_code',
         'preview_map_3_code',
-        'previewMap1',
-        'previewMap2',
-        'previewMap3',
     ];
 
     protected $fillable = [
