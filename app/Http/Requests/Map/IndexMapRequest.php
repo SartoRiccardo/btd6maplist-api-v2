@@ -24,8 +24,14 @@ class IndexMapRequest extends BaseRequest
      */
     protected function prepareForValidation(): void
     {
+        $subfilter = $this->input('format_subfilter');
+        if (is_string($subfilter)) {
+            $subfilter = array_map('intval', array_filter(explode(',', $subfilter), fn($v) => is_numeric(trim($v))));
+        }
+
         $this->merge([
             'timestamp' => $this->input('timestamp', time()),
+            'format_subfilter' => $subfilter,
             'page' => $this->input('page', 1),
             'per_page' => $this->input('per_page', 100),
             'deleted' => $this->input('deleted', 'exclude'),
@@ -40,7 +46,8 @@ class IndexMapRequest extends BaseRequest
         return [
             'timestamp' => ['nullable', 'integer', 'min:0'],
             'format_id' => ['nullable', 'integer', 'min:1', 'exists:formats,id'],
-            'format_subfilter' => ['nullable', 'integer', 'min:0'],
+            'format_subfilter' => ['nullable', 'array'],
+            'format_subfilter.*' => ['integer', 'min:0'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:150'],
             'deleted' => ['nullable', 'in:only,exclude,any'],
