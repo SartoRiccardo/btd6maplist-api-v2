@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RetroGame\IndexRetroGameRequest;
+use App\Models\MapListMeta;
 use App\Models\RetroGame;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class RetroGameController extends Controller
 {
@@ -34,13 +37,46 @@ class RetroGameController extends Controller
 
         $page = $validated['page'];
         $perPage = $validated['per_page'];
+        $include = $validated['include'] ?? [];
+        $includeProgress = in_array('progress', $include);
 
-        $games = RetroGame::query()
-            ->orderBy('id')
-            ->paginate($perPage, ['*'], 'page', $page);
+        $games = RetroGame::query()->orderBy('id')->paginate($perPage, ['*'], 'page', $page);
+
+        $data = collect($games->items());
+
+        if ($includeProgress) {
+            $gameIds = $data->pluck('id');
+            $now = Carbon::now();
+            $activeMetaCte = MapListMeta::activeAtTimestamp($now);
+
+            $progress = DB::table('retro_maps as rm')
+                ->select('rm.retro_game_id')
+                ->selectRaw('COUNT(rm.id) AS total_maps')
+                ->selectRaw('COUNT(active_meta.remake_of) AS maps_remade')
+                ->leftJoin(
+                    DB::raw("({$activeMetaCte->toSql()}) AS active_meta"),
+                    function ($join) {
+                        $join->on('active_meta.remake_of', '=', 'rm.id')
+                            ->whereNull('active_meta.deleted_on');
+                    }
+                )
+                ->addBinding($activeMetaCte->getBindings(), 'join')
+                ->whereIn('rm.retro_game_id', $gameIds)
+                ->whereNull('rm.deleted_at')
+                ->groupBy('rm.retro_game_id')
+                ->get()
+                ->keyBy('retro_game_id');
+
+            $data = $data->map(function ($game) use ($progress) {
+                $p = $progress->get($game->id);
+                $game->total_maps = $p ? (int) $p->total_maps : 0;
+                $game->maps_remade = $p ? (int) $p->maps_remade : 0;
+                return $game;
+            });
+        }
 
         return response()->json([
-            'data' => $games->items(),
+            'data' => $data->values(),
             'meta' => [
                 'current_page' => $games->currentPage(),
                 'last_page' => $games->lastPage(),
