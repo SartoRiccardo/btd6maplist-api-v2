@@ -58,6 +58,7 @@ class UserController
         $includeFlair = in_array('flair', $includes, true);
         $includeMedals = in_array('medals', $includes, true);
         $includeAchRoles = in_array('achievement_roles', $includes, true);
+        $includePermissions = in_array('permissions', $includes, true);
 
         // Resolve @me alias
         if ($id === '@me') {
@@ -100,6 +101,14 @@ class UserController
         // Include achievement roles
         if ($includeAchRoles) {
             $response['achievement_roles'] = AchievementRole::forUser($user->discord_id)->toArray();
+        }
+
+        // Include permissions grouped by permission name
+        if ($includePermissions) {
+            $response['permissions'] = collect($user->permissions)
+                ->groupBy('permission')
+                ->map(fn($perms) => $perms->pluck('format_id')->values())
+                ->toArray();
         }
 
         return response()->json($response);
