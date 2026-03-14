@@ -12,6 +12,7 @@ use App\Models\Creator;
 use App\Models\Map;
 use App\Models\MapAlias;
 use App\Models\MapListMeta;
+use App\Models\RetroMap;
 use App\Models\Verification;
 use App\Services\MapService;
 use App\Services\UserService;
@@ -62,6 +63,7 @@ class MapController
         $verifiedBy = $validated['verified_by'] ?? null;
         $formatId = $validated['format_id'] ?? null;
         $formatSubfilter = $validated['format_subfilter'] ?? null;
+        $fillMissingRetro = $validated['fill_missing_retro'] ?? false;
 
         $latsetMetaCte = MapListMeta::activeAtTimestamp($timestamp);
 
@@ -130,8 +132,8 @@ class MapController
             })
             ->filter()
             ->values();
-
-        return response()->json([
+        
+        $response = [
             'data' => $data,
             'meta' => [
                 'current_page' => $metaCodes->currentPage(),
@@ -139,7 +141,79 @@ class MapController
                 'per_page' => $metaCodes->perPage(),
                 'total' => $metaCodes->total(),
             ],
-        ]);
+        ];
+
+        // Backfill with unremade retro maps for Nostalgia Pack
+        if ($fillMissingRetro) {
+            $totalRemade = $metaCodes->total();
+            $activeMetaSql = $latsetMetaCte->toSql();
+            $activeMetaBindings = $latsetMetaCte->getBindings();
+
+            // Unremade retro maps: left join with active metas, keep where meta is null
+            $backfillQuery = RetroMap::with('game')
+                ->leftJoin(
+                    DB::raw("({$activeMetaSql}) AS active_meta"),
+                    function ($join) use ($timestamp) {
+                        $join->on('active_meta.remake_of', '=', 'retro_maps.id')
+                            ->where(function ($q) use ($timestamp) {
+                                $q->whereNull('active_meta.deleted_on')
+                                    ->orWhere('active_meta.deleted_on', '>', $timestamp);
+                            });
+                    }
+                )
+                ->addBinding($activeMetaBindings, 'join')
+                ->whereNull('active_meta.id')
+                ->select('retro_maps.*')
+                ->orderBy('retro_maps.retro_game_id')
+                ->orderBy('retro_maps.sort_order');
+
+            // Apply format_subfilter (game_id filter) if present
+            if (!empty($formatSubfilter)) {
+                $backfillQuery->whereHas('game', function ($q) use ($formatSubfilter) {
+                    $q->whereIn('game_id', $formatSubfilter);
+                });
+            }
+
+            $totalBackfill = $backfillQuery->count();
+            $backfillLimit = $perPage - $data->count();
+            $backfillOffset = max(0, ($page - 1) * $perPage - $totalRemade);
+
+            if ($backfillLimit > 0) {
+                $backfillMaps = $backfillQuery
+                    ->offset($backfillOffset)
+                    ->limit($backfillLimit)
+                    ->get()
+                    ->map(function ($retroMap) {
+                        return [
+                            'code' => null,
+                            'name' => $retroMap->name,
+                            'r6_start' => null,
+                            'map_data' => null,
+                            'map_preview_url' => $retroMap->preview_url,
+                            'map_notes' => null,
+                            'placement_curver' => null,
+                            'placement_allver' => null,
+                            'difficulty' => null,
+                            'optimal_heros' => [],
+                            'botb_difficulty' => null,
+                            'remake_of' => null,
+                            'deleted_on' => null,
+                            'retro_map' => $retroMap->toArray(),
+                            'is_verified' => false,
+                        ];
+                    });
+
+                $data = $data->concat($backfillMaps)->values();
+            }
+
+            $totalCombined = $totalRemade + $totalBackfill;
+
+            $response['data'] = $data;
+            $response['meta']['total'] = $totalCombined;
+            $response['meta']['last_page'] = (int) ceil($totalCombined / $perPage);
+        }
+
+        return response()->json($response);
     }
 
     /**
