@@ -37,7 +37,7 @@ class RoleSeeder extends Seeder
         self::ROLES['MAPLIST_MODERATOR'] => ['name' => 'Maplist Moderator', 'assign_on_create' => false, 'internal' => false],
         self::ROLES['EXPERT_LIST_MODERATOR'] => ['name' => 'Expert List Moderator', 'assign_on_create' => false, 'internal' => false],
         self::ROLES['REQUIRES_RECORDINGS'] => ['name' => 'Requires Recordings', 'assign_on_create' => false, 'internal' => false],
-        self::ROLES['CAN_SUBMIT'] => ['name' => 'Can Submit', 'assign_on_create' => true, 'internal' => false],
+        self::ROLES['CAN_SUBMIT'] => ['name' => 'Can Submit', 'assign_on_create' => true, 'internal' => true],
         self::ROLES['BOTB_OWNER'] => ['name' => 'BotB Owner', 'assign_on_create' => false, 'internal' => false],
         self::ROLES['BOTB_CURATOR'] => ['name' => 'BotB Curator', 'assign_on_create' => false, 'internal' => false],
         self::ROLES['BOTB_VERIFIER'] => ['name' => 'BotB Verifier', 'assign_on_create' => false, 'internal' => false],

@@ -59,6 +59,7 @@ class UserController
         $includeMedals = in_array('medals', $includes, true);
         $includeAchRoles = in_array('achievement_roles', $includes, true);
         $includePermissions = in_array('permissions', $includes, true);
+        $includeRanks = in_array('ranks', $includes, true);
 
         // Resolve @me alias
         if ($id === '@me') {
@@ -108,6 +109,39 @@ class UserController
             $response['permissions'] = collect($user->permissions)
                 ->groupBy('permission')
                 ->map(fn($perms) => $perms->pluck('format_id')->values())
+                ->toArray();
+        }
+
+        // Include leaderboard ranks from all_leaderboards view
+        if ($includeRanks) {
+            $rows = DB::table('all_leaderboards')
+                ->where('user_id', $user->discord_id)
+                ->get();
+
+            $response['ranks'] = $rows
+                ->groupBy('lb_format')
+                ->map(function ($formatRows) {
+                    $defaultStat = ['score' => 0, 'placement' => null];
+                    $stats = [
+                        'points' => null,
+                        'lccs' => $defaultStat,
+                        'no_geraldo' => $defaultStat,
+                        'black_border' => $defaultStat,
+                    ];
+
+                    foreach ($formatRows as $row) {
+                        $stats[$row->lb_type] = [
+                            'score' => (float) $row->score,
+                            'placement' => (int) $row->placement,
+                        ];
+                    }
+
+                    return [
+                        'format_id' => (int) $formatRows->first()->lb_format,
+                        ...$stats,
+                    ];
+                })
+                ->values()
                 ->toArray();
         }
 
