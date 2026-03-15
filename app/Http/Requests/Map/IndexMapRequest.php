@@ -16,7 +16,8 @@ use App\Http\Requests\BaseRequest;
  *     @OA\Property(property="deleted", type="string", enum={"only", "exclude", "any"}, description="Filter by deletion status", example="exclude"),
  *     @OA\Property(property="created_by", type="integer", description="Filter by creator's discord_id", example=2000000),
  *     @OA\Property(property="verified_by", type="integer", description="Filter by verifier's discord_id", example=2000000),
- *     @OA\Property(property="fill_missing_retro", type="boolean", description="Backfill with unremade retro maps (only valid with format_id=11)", example=true)
+ *     @OA\Property(property="fill_missing_retro", type="boolean", description="Backfill with unremade retro maps (only valid with format_id=11)", example=true),
+ *     @OA\Property(property="include", type="string", description="Comma-separated includes (medals)", example="medals")
  * )
  */
 class IndexMapRequest extends BaseRequest
@@ -36,10 +37,16 @@ class IndexMapRequest extends BaseRequest
             $fillMissingRetro = filter_var($fillMissingRetro, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
         }
 
+        $include = $this->input('include');
+        if (is_string($include)) {
+            $include = array_filter(array_map('trim', explode(',', $include)));
+        }
+
         $this->merge([
             'timestamp' => $this->input('timestamp', time()),
             'format_subfilter' => $subfilter,
             'fill_missing_retro' => $fillMissingRetro,
+            'include' => $include ?? [],
             'page' => $this->input('page', 1),
             'per_page' => $this->input('per_page', 100),
             'deleted' => $this->input('deleted', 'exclude'),
@@ -70,6 +77,8 @@ class IndexMapRequest extends BaseRequest
                     }
                 },
             ],
+            'include' => ['nullable', 'array'],
+            'include.*' => ['string', 'in:medals'],
         ];
     }
 

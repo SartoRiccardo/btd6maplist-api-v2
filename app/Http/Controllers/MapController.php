@@ -64,6 +64,8 @@ class MapController
         $formatId = $validated['format_id'] ?? null;
         $formatSubfilter = $validated['format_subfilter'] ?? null;
         $fillMissingRetro = $validated['fill_missing_retro'] ?? false;
+        $include = $validated['include'] ?? [];
+        $includeMedals = in_array('medals', $include);
 
         $latsetMetaCte = MapListMeta::activeAtTimestamp($timestamp);
 
@@ -133,6 +135,51 @@ class MapController
             ->filter()
             ->values();
         
+        // Include per-map medals for the authenticated user
+        if ($includeMedals) {
+            $user = auth()->guard('discord')->user();
+            if (!$user) {
+                return response()->json([
+                    'errors' => ['include' => ['medals requires authentication']],
+                ], 422);
+            }
+
+            $activeCompCte = CompletionMeta::activeAtTimestamp($timestamp);
+            $mapCodes = $data->pluck('code')->filter()->values();
+
+            $medals = collect();
+            if ($mapCodes->isNotEmpty()) {
+                $medals = DB::table(DB::raw("({$activeCompCte->toSql()}) AS cm"))
+                    ->select('c.map_code')
+                    ->selectRaw('BOOL_OR(cm.black_border) AS black_border')
+                    ->selectRaw('BOOL_OR(cm.no_geraldo) AS no_geraldo')
+                    ->selectRaw('BOOL_OR(cm.lcc_id = lccs.id AND lccs.id IS NOT NULL) AS current_lcc')
+                    ->addBinding($activeCompCte->getBindings(), 'from')
+                    ->join('completions AS c', 'c.id', '=', 'cm.completion_id')
+                    ->join('comp_players AS cp', 'cp.run', '=', 'cm.id')
+                    ->leftJoin('lccs_by_map AS lccs', 'lccs.id', '=', 'cm.lcc_id')
+                    ->where('cp.user_id', $user->discord_id)
+                    ->whereIn('c.map_code', $mapCodes)
+                    ->whereNotNull('cm.accepted_by_id')
+                    ->whereNull('cm.deleted_on')
+                    ->groupBy('c.map_code')
+                    ->get()
+                    ->keyBy('map_code');
+            }
+
+            $data = $data->map(function ($entry) use ($medals) {
+                $code = $entry['code'] ?? null;
+                $m = $code ? $medals->get($code) : null;
+                $entry['medals'] = [
+                    'completed' => $m !== null,
+                    'black_border' => $m ? (bool) $m->black_border : false,
+                    'no_geraldo' => $m ? (bool) $m->no_geraldo : false,
+                    'current_lcc' => $m ? (bool) $m->current_lcc : false,
+                ];
+                return $entry;
+            });
+        }
+
         $response = [
             'data' => $data,
             'meta' => [
@@ -293,7 +340,7 @@ class MapController
             ...$meta->toArray(),
             'verifications' => $map->verifications->filter(function ($v) use ($currentBtd6Ver) {
                 return $v->version === null || $v->version === $currentBtd6Ver;
-            }),
+            })->values(),
             'aliases' => $map->aliases->pluck('alias')->sort()->values()->toArray(),
         ];
         $result['is_verified'] = $result['verifications']->isNotEmpty();
@@ -302,16 +349,11 @@ class MapController
         if ($includeCreatorsFlair) {
             $result['creators'] = $map->creators->map(function ($creator) use ($userService) {
                 $user = $creator->user;
-                $deco = null;
-                if ($user && $user->nk_oak) {
-                    $deco = $userService->getUserDeco($user->nk_oak);
+                if ($user) {
+                    $user->appendFlair();
+                    $userService->refreshUserCache($user);
                 }
-
-                return [
-                    ...$creator->toArray(),
-                    'avatar_url' => $deco['avatar_url'] ?? null,
-                    'banner_url' => $deco['banner_url'] ?? null,
-                ];
+                return $creator->toArray();
             });
         }
 
@@ -319,16 +361,11 @@ class MapController
         if ($includeVerifiersFlair) {
             $result['verifications'] = $result['verifications']->map(function ($verification) use ($userService) {
                 $user = $verification->user;
-                $deco = null;
-                if ($user && $user->nk_oak) {
-                    $deco = $userService->getUserDeco($user->nk_oak);
+                if ($user) {
+                    $user->appendFlair();
+                    $userService->refreshUserCache($user);
                 }
-
-                return [
-                    ...$verification->toArray(),
-                    'avatar_url' => $deco['avatar_url'] ?? null,
-                    'banner_url' => $deco['banner_url'] ?? null,
-                ];
+                return $verification->toArray();
             });
         }
 
