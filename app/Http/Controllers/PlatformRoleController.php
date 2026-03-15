@@ -48,7 +48,6 @@ class PlatformRoleController extends Controller
         $perPage = $validated['per_page'];
 
         $roles = Role::query()
-            ->where('internal', true)
             ->with('canGrant')
             ->orderBy('id')
             ->paginate($perPage, ['*'], 'page', $page);
