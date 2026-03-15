@@ -79,7 +79,7 @@ Route::prefix('maps/submissions')
 Route::prefix('maps')
     ->controller(MapController::class)
     ->group(function () {
-        Route::get('/', 'index');
+        Route::get('/', 'index')->middleware('discord.auth.optional');
         Route::get('/{id}', 'show');
 
         Route::middleware('discord.auth')

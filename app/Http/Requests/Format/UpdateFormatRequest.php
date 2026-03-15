@@ -34,7 +34,8 @@ use Carbon\Carbon;
  *         description="List of proposed difficulty names",
  *         @OA\Items(type="string"),
  *         example={"Top 3", "Top 10", "#11 ~ 20"}
- *     )
+ *     ),
+ *     @OA\Property(property="is_no_geraldo_enabled", type="boolean", description="Whether No Geraldo runs are tracked for this format", example=true)
  * )
  */
 class UpdateFormatRequest extends BaseRequest
@@ -62,6 +63,7 @@ class UpdateFormatRequest extends BaseRequest
             'map_submission_status' => ['required', 'in:closed,open,open_chimps'],
             'emoji' => ['nullable', 'string', 'max:255'],
             'proposed_difficulties' => ['nullable', 'array'],
+            'is_no_geraldo_enabled' => ['nullable', 'boolean'],
         ];
     }
 

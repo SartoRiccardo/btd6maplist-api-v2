@@ -25,6 +25,7 @@ class FormatSeeder extends Seeder
             'run_submission_status' => 'open',
             'map_submission_status' => 'open_chimps',
             'proposed_difficulties' => ["Top 3", "Top 10", "#11 ~ 20", "#21 ~ 30", "#31 ~ 40", "#41 ~ 50"],
+            'is_no_geraldo_enabled' => true,
         ],
         FormatConstants::MAPLIST_ALL_VERSIONS => [
             'name' => 'Maplist (all versions)',
@@ -32,6 +33,7 @@ class FormatSeeder extends Seeder
             'run_submission_status' => 'closed',
             'map_submission_status' => 'closed',
             'proposed_difficulties' => ["Top 3", "Top 10", "#11 ~ 20", "#21 ~ 30", "#31 ~ 40", "#41 ~ 50"],
+            'is_no_geraldo_enabled' => true,
         ],
         FormatConstants::EXPERT_LIST => [
             'name' => 'The Expert List',
@@ -45,6 +47,7 @@ class FormatSeeder extends Seeder
             'run_submission_status' => 'open',
             'map_submission_status' => 'open_chimps',
             'proposed_difficulties' => ["Casual Expert", "Casual/Medium Expert", "Medium Expert", "Medium/High Expert", "High Expert", "High/True Expert", "True Expert", "True/Extreme Expert", "Extreme Expert"],
+            'is_no_geraldo_enabled' => true,
         ],
         FormatConstants::BEST_OF_THE_BEST => [
             'name' => 'Best of the Best',
