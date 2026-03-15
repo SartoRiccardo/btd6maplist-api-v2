@@ -133,8 +133,8 @@ class CompletionController
         }
 
         // Apply format_id filter
-        if ($formatId) {
-            $metaQuery->where('format_id', $formatId);
+        if (!empty($formatId)) {
+            $metaQuery->whereIn('format_id', $formatId);
         }
 
         $metaPaginated = $metaQuery->orderBy($sortBy, $sortOrder)
