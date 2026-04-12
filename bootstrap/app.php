@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->api(prepend: []);
+        $middleware->api(prepend: [
+            \App\Http\Middleware\ForceJsonResponse::class,
+        ]);
         $middleware->alias([
             'discord.auth' => \App\Http\Middleware\DiscordAuth::class,
             'discord.auth.optional' => \App\Http\Middleware\DiscordAuthOptional::class,
