@@ -28,6 +28,8 @@ class DevSeeder extends Seeder
                 \Database\Seeders\Dev\AdditionalCodeSeeder::class,
                 // Completions
                 \Database\Seeders\Dev\CompletionSeeder::class,
+                // Map Submissions
+                \Database\Seeders\Dev\MapSubmissionSeeder::class,
                 // Achievement Roles
                 \Database\Seeders\Dev\AchievementRoleSeeder::class,
             ]);

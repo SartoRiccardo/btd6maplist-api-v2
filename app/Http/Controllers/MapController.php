@@ -506,7 +506,7 @@ class MapController
             );
 
             // Handle remake_of cleanup
-            if ($metaFields['remake_of'] !== null) {
+            if (($metaFields['remake_of'] ?? null) !== null) {
                 $mapService->clearPreviousRemakeOf($metaFields['remake_of'], $map->code, $now);
             }
 
@@ -687,7 +687,7 @@ class MapController
             }
 
             // Update verifiers
-            Verification::where('map_code', $map->code)->whereNull('version')->delete();
+            Verification::where('map_code', $map->code)->delete();
             foreach ($validated['verifiers'] ?? [] as $verifier) {
                 Verification::create([
                     'map_code' => $map->code,

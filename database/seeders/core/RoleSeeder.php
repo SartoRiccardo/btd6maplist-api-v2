@@ -75,6 +75,7 @@ class RoleSeeder extends Seeder
         self::ROLES['TECHNICIAN'] => [
             'global' => [
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
                 'create:map',
                 'edit:map',
@@ -104,6 +105,7 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
             FormatConstants::MAPLIST_ALL_VERSIONS => [
@@ -116,6 +118,7 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
             'global' => [
@@ -134,6 +137,7 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
             'global' => [
@@ -151,6 +155,7 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
             FormatConstants::MAPLIST_ALL_VERSIONS => [
@@ -162,6 +167,7 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
         ],
@@ -175,6 +181,7 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
         ],
@@ -195,6 +202,7 @@ class RoleSeeder extends Seeder
                 'edit:map',
                 'delete:map',
                 'edit:format_presentation',
+                'edit:map_submission',
                 'create:user',
                 'ban:user',
             ],
@@ -204,6 +212,7 @@ class RoleSeeder extends Seeder
                 'create:map',
                 'edit:map',
                 'delete:map',
+                'edit:map_submission',
                 'create:user',
                 'ban:user',
             ],
@@ -224,6 +233,7 @@ class RoleSeeder extends Seeder
                 'edit:map',
                 'delete:map',
                 'edit:format_presentation',
+                'edit:map_submission',
                 'create:user',
                 'ban:user',
                 'create:retro_map',
@@ -236,6 +246,7 @@ class RoleSeeder extends Seeder
                 'create:map',
                 'edit:map',
                 'delete:map',
+                'edit:map_submission',
                 'create:user',
                 'ban:user',
                 'create:retro_map',
