@@ -25,6 +25,7 @@ class RetroMapController
      *     summary="Get list of retro maps",
      *     description="Retrieves a paginated list of retro maps with optional filters. Public access.",
      *     tags={"Retro Maps"},
+     *     @OA\Parameter(name="search", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexRetroMapRequest/properties/search")),
      *     @OA\Parameter(name="game_id", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexRetroMapRequest/properties/game_id")),
      *     @OA\Parameter(name="category_id", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexRetroMapRequest/properties/category_id")),
      *     @OA\Parameter(name="page", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexRetroMapRequest/properties/page")),
@@ -44,6 +45,9 @@ class RetroMapController
         $validated = $request->validated();
 
         $query = RetroMap::with('game')
+            ->when(isset($validated['search']), function ($q) use ($validated) {
+                return $q->where('name', 'like', '%' . $validated['search'] . '%');
+            })
             ->when(isset($validated['game_id']), function ($q) use ($validated) {
                 return $q->whereHas('game', function ($subQ) use ($validated) {
                     $subQ->where('game_id', $validated['game_id']);

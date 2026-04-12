@@ -9,6 +9,7 @@ use App\Http\Requests\BaseRequest;
  *     schema="IndexRetroMapRequest",
  *     @OA\Property(property="game_id", type="integer", description="Filter by external game_id from retro_games", example=6048),
  *     @OA\Property(property="category_id", type="integer", description="Filter by category_id from retro_games", example=888),
+ *     @OA\Property(property="search", type="string", description="Search retro maps by name", example="Monkey Lane", maxLength=255),
  *     @OA\Property(property="page", type="integer", description="Page number", example=1, minimum=1),
  *     @OA\Property(property="per_page", type="integer", description="Items per page", example=15, minimum=1, maximum=100)
  * )
@@ -26,6 +27,7 @@ class IndexRetroMapRequest extends BaseRequest
     public function rules(): array
     {
         return [
+            'search' => ['nullable', 'string', 'max:255'],
             'game_id' => ['nullable', 'integer', 'min:1'],
             'category_id' => ['nullable', 'integer', 'min:1'],
             'page' => ['nullable', 'integer', 'min:1'],
