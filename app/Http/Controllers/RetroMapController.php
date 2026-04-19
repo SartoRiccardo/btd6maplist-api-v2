@@ -47,7 +47,7 @@ class RetroMapController
 
         $query = RetroMap::with('game')
             ->when(isset($validated['search']), function ($q) use ($validated) {
-                return $q->where('name', 'like', '%' . $validated['search'] . '%');
+                return $q->whereRaw('name ILIKE ?', ['%' . $validated['search'] . '%']);
             })
             ->when(isset($validated['game_id']), function ($q) use ($validated) {
                 return $q->whereHas('game', function ($subQ) use ($validated) {
