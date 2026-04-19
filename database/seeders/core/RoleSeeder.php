@@ -195,7 +195,7 @@ class RoleSeeder extends Seeder
             ],
         ],
         self::ROLES['BOTB_OWNER'] => [
-            FormatConstants::EXPERT_LIST => [
+            FormatConstants::BEST_OF_THE_BEST => [
                 'create:map',
                 'edit:map',
                 'delete:map',
@@ -209,7 +209,7 @@ class RoleSeeder extends Seeder
             ],
         ],
         self::ROLES['BOTB_CURATOR'] => [
-            FormatConstants::EXPERT_LIST => [
+            FormatConstants::BEST_OF_THE_BEST => [
                 'create:map',
                 'edit:map',
                 'delete:map',
@@ -222,7 +222,7 @@ class RoleSeeder extends Seeder
             ],
         ],
         self::ROLES['BOTB_VERIFIER'] => [
-            FormatConstants::EXPERT_LIST => [
+            FormatConstants::BEST_OF_THE_BEST => [
                 'edit:config',
                 'create:completion',
                 'edit:completion',
