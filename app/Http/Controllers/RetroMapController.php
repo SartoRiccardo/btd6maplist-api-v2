@@ -9,6 +9,7 @@ use App\Models\RetroMap;
 use App\Services\RetroMapService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class RetroMapController
 {
@@ -135,7 +136,7 @@ class RetroMapController
             $validated['retro_game_id']
         );
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($request, $validated) {
             // Shift existing maps to make room for new map
             $this->retroMapService->shiftMapOrder(
                 $validated['retro_game_id'],
@@ -146,9 +147,17 @@ class RetroMapController
             $retroMap = RetroMap::create([
                 'name' => $validated['name'],
                 'sort_order' => $validated['sort_order'],
-                'preview_url' => $validated['preview_url'],
+                'preview_url' => $validated['preview_url'] ?? null,
                 'retro_game_id' => $validated['retro_game_id'],
             ]);
+
+            if ($request->hasFile('preview_file')) {
+                $file = $request->file('preview_file');
+                $extension = $file->getClientOriginalExtension();
+                Storage::disk('public')->putFileAs('retro_map_previews', $file, "{$retroMap->id}.{$extension}");
+                $retroMap->preview_url = Storage::disk('public')->url("retro_map_previews/{$retroMap->id}.{$extension}");
+                $retroMap->save();
+            }
 
             return response()->json(['id' => $retroMap->id], 201);
         });
@@ -188,7 +197,15 @@ class RetroMapController
 
         $validated = $request->validated();
 
-        return DB::transaction(function () use ($validated, $retroMap) {
+        $previewUrl = $validated['preview_url'] ?? null;
+        if ($request->hasFile('preview_file')) {
+            $file = $request->file('preview_file');
+            $extension = $file->getClientOriginalExtension();
+            Storage::disk('public')->putFileAs('retro_map_previews', $file, "{$retroMap->id}.{$extension}");
+            $previewUrl = Storage::disk('public')->url("retro_map_previews/{$retroMap->id}.{$extension}");
+        }
+
+        return DB::transaction(function () use ($validated, $retroMap, $previewUrl) {
             $oldSortOrder = $retroMap->sort_order;
             $oldRetroGameId = $retroMap->retro_game_id;
             $newSortOrder = $validated['sort_order'];
@@ -231,7 +248,7 @@ class RetroMapController
             // Update fields
             $retroMap->name = $validated['name'];
             $retroMap->sort_order = $validated['sort_order'];
-            $retroMap->preview_url = $validated['preview_url'];
+            $retroMap->preview_url = $previewUrl;
             $retroMap->retro_game_id = $validated['retro_game_id'];
             $retroMap->save();
 
