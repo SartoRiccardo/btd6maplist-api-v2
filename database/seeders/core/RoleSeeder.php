@@ -93,6 +93,7 @@ class RoleSeeder extends Seeder
                 'create:retro_map',
                 'edit:retro_map',
                 'delete:retro_map',
+                'edit:format_presentation',
             ],
         ],
         self::ROLES['MAPLIST_OWNER'] => [
