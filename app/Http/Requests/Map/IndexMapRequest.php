@@ -13,11 +13,12 @@ use App\Http\Requests\BaseRequest;
  *     @OA\Property(property="format_subfilter", type="string", description="Comma-separated format subfilters (difficulty for Expert List, botb_difficulty for BOTB, game_id for Nostalgia Pack)", example="0,2,4"),
  *     @OA\Property(property="page", type="integer", description="Page number", example=1, minimum=1),
  *     @OA\Property(property="per_page", type="integer", description="Items per page", example=100, minimum=1, maximum=500),
- *     @OA\Property(property="deleted", type="string", enum={"only", "exclude", "any"}, description="Filter by deletion status", example="exclude"),
+ *     @OA\Property(property="deleted", type="string", enum={"only", "exclude", "any", "only_or_hidden"}, description="Filter by deletion status", example="exclude"),
  *     @OA\Property(property="created_by", type="integer", description="Filter by creator's discord_id", example=2000000),
  *     @OA\Property(property="verified_by", type="integer", description="Filter by verifier's discord_id", example=2000000),
  *     @OA\Property(property="fill_missing_retro", type="boolean", description="Backfill with unremade retro maps (only valid with format_id=11)", example=true),
- *     @OA\Property(property="include", type="string", description="Comma-separated includes (medals)", example="medals")
+ *     @OA\Property(property="include", type="string", description="Comma-separated includes (medals)", example="medals"),
+ *     @OA\Property(property="sort_by", type="string", enum={"placement_curver", "placement_allver", "difficulty", "botb_difficulty", "created_on"}, description="Column to sort by (NULLS LAST). Overrides format-based default sort.", example="placement_curver")
  * )
  */
 class IndexMapRequest extends BaseRequest
@@ -65,9 +66,10 @@ class IndexMapRequest extends BaseRequest
             'format_subfilter.*' => ['integer', 'min:0'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:150'],
-            'deleted' => ['nullable', 'in:only,exclude,any'],
+            'deleted' => ['nullable', 'in:only,exclude,any,only_or_hidden'],
             'created_by' => ['nullable', 'integer', 'min:1'],
             'verified_by' => ['nullable', 'integer', 'min:1'],
+            'sort_by' => ['nullable', 'in:placement_curver,placement_allver,difficulty,botb_difficulty,created_on'],
             'fill_missing_retro' => [
                 'nullable',
                 'boolean',
@@ -88,7 +90,8 @@ class IndexMapRequest extends BaseRequest
     public function messages(): array
     {
         return [
-            'deleted.in' => 'The deleted field must be one of: only, exclude, any.',
+            'deleted.in' => 'The deleted field must be one of: only, exclude, any, only_or_hidden.',
+            'sort_by.in' => 'The sort_by field must be one of: placement_curver, placement_allver, difficulty, botb_difficulty, created_on.',
         ];
     }
 }

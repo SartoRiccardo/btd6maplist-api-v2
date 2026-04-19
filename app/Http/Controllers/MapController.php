@@ -66,6 +66,7 @@ class MapController
         $fillMissingRetro = $validated['fill_missing_retro'] ?? false;
         $include = $validated['include'] ?? [];
         $includeMedals = in_array('medals', $include);
+        $sortBy = $validated['sort_by'] ?? null;
 
         $latsetMetaCte = MapListMeta::activeAtTimestamp($timestamp);
 
@@ -73,8 +74,13 @@ class MapController
             ->setBindings($latsetMetaCte->getBindings())
             ->with(['retroMap.game'])
             ->forFormat($formatId)
-            ->forFormatSubfilter($formatId, $formatSubfilter)
-            ->sortForFormat($formatId);
+            ->forFormatSubfilter($formatId, $formatSubfilter);
+
+        if ($sortBy) {
+            $metaQuery->orderByRaw("{$sortBy} ASC NULLS LAST")->orderBy('created_on', 'asc');
+        } else {
+            $metaQuery->sortForFormat($formatId);
+        }
 
         // Apply deleted filter
         if ($deleted === 'only') {
@@ -83,6 +89,27 @@ class MapController
             $metaQuery->where(function ($query) use ($timestamp) {
                 $query->whereNull('deleted_on')
                     ->orWhere('deleted_on', '>', $timestamp);
+            });
+        } elseif ($deleted === 'only_or_hidden') {
+            $mapCount = Config::loadVars(['map_count'])->get('map_count', 50);
+            $metaQuery->where(function ($query) use ($timestamp, $mapCount) {
+                $query->where(function ($q) use ($timestamp) {
+                    $q->whereNotNull('deleted_on')
+                        ->where('deleted_on', '<=', $timestamp);
+                })->orWhere(function ($q) use ($mapCount) {
+                    $q->where(function ($inner) use ($mapCount) {
+                        $inner->whereNull('placement_curver')
+                            ->orWhere('placement_curver', '>', $mapCount);
+                    })
+                    ->where(function ($inner) use ($mapCount) {
+                        $inner->whereNull('placement_allver')
+                            ->orWhere('placement_allver', '>', $mapCount);
+                    })
+                    ->whereNull('difficulty')
+                    ->whereNull('botb_difficulty')
+                    ->whereNull('remake_of')
+                    ->whereNull('deleted_on');
+                });
             });
         }
 
