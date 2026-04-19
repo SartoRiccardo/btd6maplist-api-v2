@@ -15,6 +15,52 @@ class UserController
 {
     /**
      * @OA\Get(
+     *     path="/users",
+     *     summary="List users",
+     *     description="Returns a paginated list of users. If 'search' is provided, results are filtered by trigram similarity on username. Requires the global 'list:users' permission.",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="page", in="query", required=false, @OA\Schema(type="integer", minimum=1, example=1)),
+     *     @OA\Parameter(name="per_page", in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=100, example=20)),
+     *     @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string", example="Cyber")),
+     *     @OA\Response(response=200, description="Paginated user list"),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=403, description="Forbidden - Missing list:users permission"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function index(Request $request)
+    {
+        $user = auth()->guard('discord')->user();
+        if (!$user || !$user->hasPermission('list:users', null)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = min(100, max(1, (int) $request->query('per_page', 20)));
+        $search = $request->query('search', '');
+
+        if ($search !== '') {
+            $query = User::selectRaw('users.*, SIMILARITY(name, ?) as simil', [$search])
+                ->whereRaw('SIMILARITY(name, ?) > 0.1', [$search])
+                ->orderByDesc('simil');
+        } else {
+            $query = User::query()->orderBy('name');
+        }
+
+        $total = $query->count();
+        $users = $query->offset(($page - 1) * $perPage)->limit($perPage)->get();
+
+        return response()->json([
+            'data' => $users->map(fn($u) => collect($u->toArray())->except('simil')->toArray())->values(),
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+        ]);
+    }
+
+    /**
+     * @OA\Get(
      *     path="/users/{id}",
      *     summary="Get user by ID",
      *     description="Returns a user's profile data including their platform roles. If the user has a Ninja Kiwi OAK set and 'flair' is in the include parameter, avatar and banner URLs are fetched from the Ninja Kiwi API. If 'medals' is included, medal statistics are calculated for the specified timestamp. The {id} parameter can be '@me' to get the authenticated user's profile (requires authentication).",

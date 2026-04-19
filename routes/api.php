@@ -135,6 +135,7 @@ Route::prefix('roles/achievement')
 Route::prefix('users')
     ->controller(UserController::class)
     ->group(function () {
+        Route::get('/', 'index')->middleware('discord.auth');
         Route::get('/{id}', 'show')->middleware('discord.auth.optional');
 
         Route::middleware('discord.auth')
