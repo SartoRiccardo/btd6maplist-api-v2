@@ -109,6 +109,13 @@ Route::prefix('completions')
 
 Route::post('/server-roles', [DiscordUtilitiesController::class, 'serverRoles']);
 
+Route::middleware('discord.auth')
+    ->prefix('proxy/discord')
+    ->controller(DiscordUtilitiesController::class)
+    ->group(function () {
+        Route::get('/guilds/{id}/roles', 'guildRoles');
+    });
+
 // Platform Roles endpoints
 Route::prefix('roles/platform')
     ->controller(PlatformRoleController::class)
