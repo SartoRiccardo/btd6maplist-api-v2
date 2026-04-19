@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\AchievementRole;
 use App\Models\Role;
@@ -23,6 +24,7 @@ class UserController
      *     @OA\Parameter(name="page", in="query", required=false, @OA\Schema(type="integer", minimum=1, example=1)),
      *     @OA\Parameter(name="per_page", in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=100, example=20)),
      *     @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string", example="Cyber")),
+     *     @OA\Parameter(name="include", in="query", required=false, description="Comma-separated list of additional data to include. Use 'flair' to include avatar_url and banner_url.", @OA\Schema(type="string", example="flair")),
      *     @OA\Response(response=200, description="Paginated user list"),
      *     @OA\Response(response=401, description="Unauthorized"),
      *     @OA\Response(response=403, description="Forbidden - Missing list:users permission"),
@@ -35,6 +37,9 @@ class UserController
         if (!$user || !$user->hasPermission('list:users', null)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
+
+        $includes = array_filter(explode(',', $request->query('include', '')));
+        $includeFlair = in_array('flair', $includes, true);
 
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(100, max(1, (int) $request->query('per_page', 20)));
@@ -51,12 +56,57 @@ class UserController
         $total = $query->count();
         $users = $query->offset(($page - 1) * $perPage)->limit($perPage)->get();
 
+        if ($includeFlair) {
+            $users->each->appendFlair();
+        }
+
         return response()->json([
             'data' => $users->map(fn($u) => collect($u->toArray())->except('simil')->toArray())->values(),
             'total' => $total,
             'page' => $page,
             'per_page' => $perPage,
         ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/users",
+     *     summary="Create a user",
+     *     description="Creates a new user with the given Discord ID and name, and assigns all roles marked as assign_on_create. Requires the global 'create:user' permission.",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(mediaType="application/json", @OA\Schema(ref="#/components/schemas/CreateUserRequest"))
+     *     ),
+     *     @OA\Response(response=201, description="User created", @OA\MediaType(mediaType="application/json", @OA\Schema(ref="#/components/schemas/User"))),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=403, description="Forbidden - Missing create:user permission"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function store(CreateUserRequest $request)
+    {
+        $user = auth()->guard('discord')->user();
+        if (!$user->hasPermission('create:user', null)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validated();
+
+        return DB::transaction(function () use ($validated) {
+            $newUser = User::create([
+                'discord_id' => $validated['discord_id'],
+                'name' => $validated['name'],
+            ]);
+
+            $assignOnCreateRoleIds = Role::where('assign_on_create', true)->pluck('id');
+            if ($assignOnCreateRoleIds->isNotEmpty()) {
+                $newUser->roles()->syncWithoutDetaching($assignOnCreateRoleIds);
+            }
+
+            return response()->json($newUser->load('roles'), 201);
+        });
     }
 
     /**

@@ -140,6 +140,7 @@ Route::prefix('users')
 
         Route::middleware('discord.auth')
             ->group(function () {
+                Route::post('/', 'store');
                 Route::put('/{id}', 'update');
                 Route::put('/{id}/ban', 'banUser');
                 Route::put('/{id}/unban', 'unbanUser');
