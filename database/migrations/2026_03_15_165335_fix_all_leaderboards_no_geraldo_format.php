@@ -59,6 +59,7 @@ return new class extends Migration
             FROM leaderboard_black_border(11)
         ");
 
+        DB::statement("REFRESH MATERIALIZED VIEW listmap_points");
         DB::statement("REFRESH MATERIALIZED VIEW snapshot_lb_linked_roles");
     }
 
