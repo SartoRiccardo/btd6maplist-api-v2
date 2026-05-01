@@ -6,5 +6,5 @@ php artisan route:cache
 php artisan view:cache
 php artisan migrate --force
 
-php-fpm -D
+php-fpm -D --nodaemonize 2>&1 &
 exec nginx -g 'daemon off;'
