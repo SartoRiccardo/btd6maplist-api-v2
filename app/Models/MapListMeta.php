@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\SemicolonOrJsonArrayCast;
 use App\Constants\FormatConstants;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -35,7 +36,7 @@ class MapListMeta extends Model
     ];
 
     protected $casts = [
-        'optimal_heros' => 'array'
+        'optimal_heros' => SemicolonOrJsonArrayCast::class
     ];
 
     /**
