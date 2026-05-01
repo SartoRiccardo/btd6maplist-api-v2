@@ -487,6 +487,84 @@ class UserController
         });
     }
 
+    /**
+     * @OA\Put(
+     *     path="/users/{id}/roles/{role_id}",
+     *     summary="Assign a role to a user",
+     *     description="Idempotently assigns a platform role to a user. The authenticated user must hold at least one role that is permitted to grant the target role (as defined in role_grants). Assigning an already-held role is a no-op.",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, description="Discord ID of the target user", @OA\Schema(type="string", example="123456789012345678")),
+     *     @OA\Parameter(name="role_id", in="path", required=true, description="ID of the role to assign", @OA\Schema(type="integer", example=1)),
+     *     @OA\Response(response=204, description="Role assigned (or already held)"),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=403, description="Forbidden - No role grants permission to assign this role"),
+     *     @OA\Response(response=404, description="User or role not found")
+     * )
+     */
+    public function assignRole(Request $request, string $id, int $roleId)
+    {
+        $actor = auth()->guard('discord')->user();
+
+        $targetUser = User::find($id);
+        if (!$targetUser) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $role = Role::with('grantedBy')->find($roleId);
+        if (!$role) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $requiredRoleIds = $role->grantedBy->pluck('id');
+        if ($requiredRoleIds->isEmpty() || $actor->roles->pluck('id')->intersect($requiredRoleIds)->isEmpty()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $targetUser->roles()->syncWithoutDetaching([$roleId]);
+
+        return response()->noContent();
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/users/{id}/roles/{role_id}",
+     *     summary="Revoke a role from a user",
+     *     description="Idempotently revokes a platform role from a user. The authenticated user must hold at least one role that is permitted to grant the target role (as defined in role_grants). Revoking a role the user does not hold is a no-op.",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, description="Discord ID of the target user", @OA\Schema(type="string", example="123456789012345678")),
+     *     @OA\Parameter(name="role_id", in="path", required=true, description="ID of the role to revoke", @OA\Schema(type="integer", example=1)),
+     *     @OA\Response(response=204, description="Role revoked (or not held)"),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=403, description="Forbidden - No role grants permission to revoke this role"),
+     *     @OA\Response(response=404, description="User or role not found")
+     * )
+     */
+    public function revokeRole(Request $request, string $id, int $roleId)
+    {
+        $actor = auth()->guard('discord')->user();
+
+        $targetUser = User::find($id);
+        if (!$targetUser) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $role = Role::with('grantedBy')->find($roleId);
+        if (!$role) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $requiredRoleIds = $role->grantedBy->pluck('id');
+        if ($requiredRoleIds->isEmpty() || $actor->roles->pluck('id')->intersect($requiredRoleIds)->isEmpty()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $targetUser->roles()->detach($roleId);
+
+        return response()->noContent();
+    }
+
     public function readRules(Request $request)
     {
         $user = auth()->guard('discord')->user();

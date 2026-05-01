@@ -151,6 +151,8 @@ Route::prefix('users')
                 Route::put('/{id}', 'update');
                 Route::put('/{id}/ban', 'banUser');
                 Route::put('/{id}/unban', 'unbanUser');
+                Route::put('/{id}/roles/{roleId}', 'assignRole');
+                Route::delete('/{id}/roles/{roleId}', 'revokeRole');
             });
     });
 
