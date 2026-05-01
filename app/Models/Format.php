@@ -26,7 +26,8 @@ use Illuminate\Database\Eloquent\Model;
  *     @OA\Property(property="hidden", type="boolean", description="Whether the format is hidden", example=false),
  *     @OA\Property(property="run_submission_status", type="string", enum={"closed", "open", "lcc_only"}, description="Run submission status", example="open"),
  *     @OA\Property(property="map_submission_status", type="string", enum={"closed", "open", "open_chimps"}, description="Map submission status", example="open_chimps"),
- *     @OA\Property(property="proposed_difficulties", type="array", nullable=true, description="List of proposed difficulty names", @OA\Items(type="string"))
+ *     @OA\Property(property="proposed_difficulties", type="array", nullable=true, description="List of proposed difficulty names", @OA\Items(type="string")),
+ *     @OA\Property(property="is_no_geraldo_enabled", type="boolean", description="Whether No Geraldo runs are tracked for this format", example=true)
  * )
  */
 class Format extends Model
@@ -42,9 +43,6 @@ class Format extends Model
         'preview_map_1_code',
         'preview_map_2_code',
         'preview_map_3_code',
-        'previewMap1',
-        'previewMap2',
-        'previewMap3',
     ];
 
     protected $fillable = [
@@ -66,6 +64,7 @@ class Format extends Model
         'map_submission_status',
         'emoji',
         'proposed_difficulties',
+        'is_no_geraldo_enabled',
     ];
 
     public $incrementing = false;
@@ -73,6 +72,7 @@ class Format extends Model
     protected $casts = [
         'id' => 'integer',
         'hidden' => 'boolean',
+        'is_no_geraldo_enabled' => 'boolean',
         'proposed_difficulties' => 'array',
         'run_submission_status' => RunSubmissionStatusCast::class,
         'map_submission_status' => MapSubmissionStatusCast::class,

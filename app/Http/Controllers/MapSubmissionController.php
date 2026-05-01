@@ -27,7 +27,7 @@ class MapSubmissionController extends Controller
      *     tags={"Map Submissions"},
      *     @OA\Parameter(name="page", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexMapSubmissionRequest/properties/page")),
      *     @OA\Parameter(name="per_page", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexMapSubmissionRequest/properties/per_page")),
-     *     @OA\Parameter(name="format_id", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexMapSubmissionRequest/properties/format_id")),
+     *     @OA\Parameter(name="format_ids", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexMapSubmissionRequest/properties/format_ids")),
      *     @OA\Parameter(name="submitter_id", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexMapSubmissionRequest/properties/submitter_id")),
      *     @OA\Parameter(name="status", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexMapSubmissionRequest/properties/status")),
      *     @OA\Parameter(name="include", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexMapSubmissionRequest/properties/include")),
@@ -48,7 +48,7 @@ class MapSubmissionController extends Controller
 
         $page = $validated['page'];
         $perPage = $validated['per_page'];
-        $formatId = $validated['format_id'] ?? null;
+        $formatIds = $validated['format_ids'] ?? null;
         $submitterId = $validated['submitter_id'] ?? null;
         $status = $validated['status'] ?? null;
         $include = $validated['include'] ?? [];
@@ -57,8 +57,8 @@ class MapSubmissionController extends Controller
         $query = MapSubmission::with(['submitter', 'rejecter', 'format']);
 
         // Apply filters
-        if ($formatId) {
-            $query->where('format_id', $formatId);
+        if ($formatIds) {
+            $query->whereIn('format_id', $formatIds);
         }
 
         if ($submitterId) {

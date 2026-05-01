@@ -2,6 +2,7 @@
 
 namespace App\Auth;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Services\Discord\DiscordApiClient;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -45,7 +46,7 @@ class DiscordGuard implements Guard
 
         try {
             $discordProfile = DiscordApiClient::getUserProfile($token);
-            return $this->user = User::firstOrCreate(
+            $user = User::firstOrCreate(
                 ['discord_id' => $discordProfile['id']],
                 [
                     'name' => $discordProfile['username'],
@@ -53,6 +54,15 @@ class DiscordGuard implements Guard
                     'is_banned' => false,
                 ]
             );
+
+            if ($user->wasRecentlyCreated) {
+                $assignOnCreateRoleIds = Role::where('assign_on_create', true)->pluck('id');
+                if ($assignOnCreateRoleIds->isNotEmpty()) {
+                    $user->roles()->syncWithoutDetaching($assignOnCreateRoleIds);
+                }
+            }
+
+            return $this->user = $user;
         } catch (\RuntimeException $e) {
             return null;
         }

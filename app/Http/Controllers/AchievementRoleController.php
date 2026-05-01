@@ -123,9 +123,10 @@ class AchievementRoleController extends Controller
             return response()->json(['message' => 'Forbidden - Missing edit:achievement_roles permission for this format.'], 403);
         }
 
-        // Service validates composite uniqueness and for_first
         $this->achievementRoleService->validateCompositeUniqueness($lbFormat, $lbType, $threshold);
-        $this->achievementRoleService->validateForFirstUniqueness($lbFormat, $lbType);
+        if ($forFirst) {
+            $this->achievementRoleService->validateForFirstUniqueness($lbFormat, $lbType);
+        }
         $this->achievementRoleService->validateRoleIdsNotInUse($discordRoles);
 
         $role = DB::transaction(function () use ($request) {
@@ -182,9 +183,10 @@ class AchievementRoleController extends Controller
         $forFirst = $request->input('for_first');
         $discordRoles = $request->input('discord_roles', []);
 
-        // Service validates composite uniqueness and for_first (excluding current role)
         $this->achievementRoleService->validateCompositeUniqueness($lbFormat, $lbType, $threshold, $id);
-        $this->achievementRoleService->validateForFirstUniqueness($lbFormat, $lbType, $id);
+        if ($forFirst) {
+            $this->achievementRoleService->validateForFirstUniqueness($lbFormat, $lbType, $id);
+        }
         $this->achievementRoleService->validateRoleIdsNotInUse($discordRoles, $id);
 
         $role = DB::transaction(function () use ($request, $role) {

@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            \Database\Seeders\Core\RetroGameSeeder::class,
             \Database\Seeders\Core\FormatSeeder::class,
             \Database\Seeders\Core\FormatRuleSubsetSeeder::class,
             \Database\Seeders\Core\RoleSeeder::class,

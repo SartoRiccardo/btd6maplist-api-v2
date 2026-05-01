@@ -1,0 +1,34 @@
+name: btd6maplist-api-v2
+
+services:
+    app:
+        build: .
+        image: btd6maplist-api
+        ports:
+            - "8000:80"
+        env_file: .env
+        depends_on:
+            - postgres
+            - redis
+
+    worker:
+        image: btd6maplist-api
+        command: php artisan queue:work --sleep=3 --tries=3
+        env_file: .env
+        depends_on:
+            - app
+            - postgres
+            - redis
+
+    postgres:
+        image: postgres:16
+        volumes:
+            - ./pgdata:/data/postgres
+        environment:
+            POSTGRES_USER: btd6maplist
+            POSTGRES_PASSWORD: btd6maplist
+            PGDATA: /data/postgres
+            POSTGRES_DB: btd6maplist
+
+    redis:
+        image: redis

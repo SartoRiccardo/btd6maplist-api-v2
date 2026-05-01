@@ -9,6 +9,7 @@ use App\Models\RetroMap;
 use App\Services\RetroMapService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class RetroMapController
 {
@@ -25,6 +26,7 @@ class RetroMapController
      *     summary="Get list of retro maps",
      *     description="Retrieves a paginated list of retro maps with optional filters. Public access.",
      *     tags={"Retro Maps"},
+     *     @OA\Parameter(name="search", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexRetroMapRequest/properties/search")),
      *     @OA\Parameter(name="game_id", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexRetroMapRequest/properties/game_id")),
      *     @OA\Parameter(name="category_id", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexRetroMapRequest/properties/category_id")),
      *     @OA\Parameter(name="page", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexRetroMapRequest/properties/page")),
@@ -44,6 +46,9 @@ class RetroMapController
         $validated = $request->validated();
 
         $query = RetroMap::with('game')
+            ->when(isset($validated['search']), function ($q) use ($validated) {
+                return $q->whereRaw('name ILIKE ?', ['%' . $validated['search'] . '%']);
+            })
             ->when(isset($validated['game_id']), function ($q) use ($validated) {
                 return $q->whereHas('game', function ($subQ) use ($validated) {
                     $subQ->where('game_id', $validated['game_id']);
@@ -131,7 +136,16 @@ class RetroMapController
             $validated['retro_game_id']
         );
 
-        return DB::transaction(function () use ($validated) {
+        $previewUrl = $validated['preview_url'] ?? null;
+        if ($request->hasFile('preview_file')) {
+            $file = $request->file('preview_file');
+            $extension = $file->getClientOriginalExtension();
+            $filename = \Illuminate\Support\Str::uuid() . ".{$extension}";
+            Storage::disk('public')->putFileAs('retro_map_previews', $file, $filename);
+            $previewUrl = Storage::disk('public')->url("retro_map_previews/{$filename}");
+        }
+
+        return DB::transaction(function () use ($validated, $previewUrl) {
             // Shift existing maps to make room for new map
             $this->retroMapService->shiftMapOrder(
                 $validated['retro_game_id'],
@@ -142,7 +156,7 @@ class RetroMapController
             $retroMap = RetroMap::create([
                 'name' => $validated['name'],
                 'sort_order' => $validated['sort_order'],
-                'preview_url' => $validated['preview_url'],
+                'preview_url' => $previewUrl,
                 'retro_game_id' => $validated['retro_game_id'],
             ]);
 
@@ -184,7 +198,15 @@ class RetroMapController
 
         $validated = $request->validated();
 
-        return DB::transaction(function () use ($validated, $retroMap) {
+        $previewUrl = $validated['preview_url'] ?? null;
+        if ($request->hasFile('preview_file')) {
+            $file = $request->file('preview_file');
+            $extension = $file->getClientOriginalExtension();
+            Storage::disk('public')->putFileAs('retro_map_previews', $file, "{$retroMap->id}.{$extension}");
+            $previewUrl = Storage::disk('public')->url("retro_map_previews/{$retroMap->id}.{$extension}");
+        }
+
+        return DB::transaction(function () use ($validated, $retroMap, $previewUrl) {
             $oldSortOrder = $retroMap->sort_order;
             $oldRetroGameId = $retroMap->retro_game_id;
             $newSortOrder = $validated['sort_order'];
@@ -227,7 +249,7 @@ class RetroMapController
             // Update fields
             $retroMap->name = $validated['name'];
             $retroMap->sort_order = $validated['sort_order'];
-            $retroMap->preview_url = $validated['preview_url'];
+            $retroMap->preview_url = $previewUrl;
             $retroMap->retro_game_id = $validated['retro_game_id'];
             $retroMap->save();
 

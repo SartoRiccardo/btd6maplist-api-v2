@@ -133,8 +133,8 @@ class CompletionController
         }
 
         // Apply format_id filter
-        if ($formatId) {
-            $metaQuery->where('format_id', $formatId);
+        if (!empty($formatId)) {
+            $metaQuery->whereIn('format_id', $formatId);
         }
 
         $metaPaginated = $metaQuery->orderBy($sortBy, $sortOrder)
@@ -161,6 +161,18 @@ class CompletionController
             $currentLccIds = DB::table('lccs_by_map')
                 ->whereIn('id', $lccIds)
                 ->pluck('id');
+        }
+
+        // Append flair to players if requested
+        $includePlayersFlair = in_array('players.flair', $include);
+        if ($includePlayersFlair) {
+            $userService = app(UserService::class);
+            foreach ($metaPaginated as $meta) {
+                foreach ($meta->players as $player) {
+                    $player->appendFlair();
+                    $userService->refreshUserCache($player);
+                }
+            }
         }
 
         // Build data array from paginated metas

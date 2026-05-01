@@ -96,19 +96,19 @@ class MapListMeta extends Model
      * Scope to apply format subfilter.
      * Only applies when format_id is EXPERT_LIST, BEST_OF_THE_BEST, or NOSTALGIA_PACK.
      */
-    public function scopeForFormatSubfilter($query, ?int $formatId, ?int $subfilter)
+    public function scopeForFormatSubfilter($query, ?int $formatId, ?array $subfilter)
     {
-        if (!$formatId || $subfilter === null) {
+        if (!$formatId || empty($subfilter)) {
             return $query;
         }
 
         return match ($formatId) {
-            FormatConstants::EXPERT_LIST => $query->where('difficulty', $subfilter),
-            FormatConstants::BEST_OF_THE_BEST => $query->where('botb_difficulty', $subfilter),
+            FormatConstants::EXPERT_LIST => $query->whereIn('difficulty', $subfilter),
+            FormatConstants::BEST_OF_THE_BEST => $query->whereIn('botb_difficulty', $subfilter),
             FormatConstants::NOSTALGIA_PACK => $query->whereHas('retroMap.game', function ($q) use ($subfilter) {
-                    $q->where('game_id', $subfilter);
+                    $q->whereIn('game_id', $subfilter);
                 }),
-            default => $query, // MAPLIST and MAPLIST_ALL_VERSIONS ignore subfilter
+            default => $query,
         };
     }
 

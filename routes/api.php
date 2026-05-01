@@ -79,7 +79,7 @@ Route::prefix('maps/submissions')
 Route::prefix('maps')
     ->controller(MapController::class)
     ->group(function () {
-        Route::get('/', 'index');
+        Route::get('/', 'index')->middleware('discord.auth.optional');
         Route::get('/{id}', 'show');
 
         Route::middleware('discord.auth')
@@ -109,6 +109,13 @@ Route::prefix('completions')
 
 Route::post('/server-roles', [DiscordUtilitiesController::class, 'serverRoles']);
 
+Route::middleware('discord.auth')
+    ->prefix('proxy/discord')
+    ->controller(DiscordUtilitiesController::class)
+    ->group(function () {
+        Route::get('/guilds/{id}/roles', 'guildRoles');
+    });
+
 // Platform Roles endpoints
 Route::prefix('roles/platform')
     ->controller(PlatformRoleController::class)
@@ -135,13 +142,17 @@ Route::prefix('roles/achievement')
 Route::prefix('users')
     ->controller(UserController::class)
     ->group(function () {
+        Route::get('/', 'index')->middleware('discord.auth');
         Route::get('/{id}', 'show')->middleware('discord.auth.optional');
 
         Route::middleware('discord.auth')
             ->group(function () {
+                Route::post('/', 'store');
                 Route::put('/{id}', 'update');
                 Route::put('/{id}/ban', 'banUser');
                 Route::put('/{id}/unban', 'unbanUser');
+                Route::put('/{id}/roles/{roleId}', 'assignRole');
+                Route::delete('/{id}/roles/{roleId}', 'revokeRole');
             });
     });
 

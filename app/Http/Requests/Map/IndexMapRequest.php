@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Map;
 
+use App\Constants\FormatConstants;
 use App\Http\Requests\BaseRequest;
 
 /**
@@ -9,12 +10,15 @@ use App\Http\Requests\BaseRequest;
  *     schema="IndexMapRequest",
  *     @OA\Property(property="timestamp", type="integer", description="Unix timestamp to filter maps active at this time", example=1736123456),
  *     @OA\Property(property="format_id", type="integer", description="Format ID filter", example=1),
- *     @OA\Property(property="format_subfilter", type="integer", description="Format subfilter (difficulty for Expert List, botb_difficulty for BOTB, game_id for Nostalgia Pack)", example=1),
+ *     @OA\Property(property="format_subfilter", type="string", description="Comma-separated format subfilters (difficulty for Expert List, botb_difficulty for BOTB, game_id for Nostalgia Pack)", example="0,2,4"),
  *     @OA\Property(property="page", type="integer", description="Page number", example=1, minimum=1),
  *     @OA\Property(property="per_page", type="integer", description="Items per page", example=100, minimum=1, maximum=500),
- *     @OA\Property(property="deleted", type="string", enum={"only", "exclude", "any"}, description="Filter by deletion status", example="exclude"),
+ *     @OA\Property(property="deleted", type="string", enum={"only", "exclude", "any", "only_or_hidden"}, description="Filter by deletion status", example="exclude"),
  *     @OA\Property(property="created_by", type="integer", description="Filter by creator's discord_id", example=2000000),
- *     @OA\Property(property="verified_by", type="integer", description="Filter by verifier's discord_id", example=2000000)
+ *     @OA\Property(property="verified_by", type="integer", description="Filter by verifier's discord_id", example=2000000),
+ *     @OA\Property(property="fill_missing_retro", type="boolean", description="Backfill with unremade retro maps (only valid with format_id=11)", example=true),
+ *     @OA\Property(property="include", type="string", description="Comma-separated includes (medals)", example="medals"),
+ *     @OA\Property(property="sort_by", type="string", enum={"placement_curver", "placement_allver", "difficulty", "botb_difficulty", "created_on"}, description="Column to sort by (NULLS LAST). Overrides format-based default sort.", example="placement_curver")
  * )
  */
 class IndexMapRequest extends BaseRequest
@@ -24,8 +28,26 @@ class IndexMapRequest extends BaseRequest
      */
     protected function prepareForValidation(): void
     {
+        $subfilter = $this->input('format_subfilter');
+        if (is_string($subfilter)) {
+            $subfilter = array_map('intval', array_filter(explode(',', $subfilter), fn($v) => is_numeric(trim($v))));
+        }
+
+        $fillMissingRetro = $this->input('fill_missing_retro');
+        if (is_string($fillMissingRetro)) {
+            $fillMissingRetro = filter_var($fillMissingRetro, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+
+        $include = $this->input('include');
+        if (is_string($include)) {
+            $include = array_filter(array_map('trim', explode(',', $include)));
+        }
+
         $this->merge([
             'timestamp' => $this->input('timestamp', time()),
+            'format_subfilter' => $subfilter,
+            'fill_missing_retro' => $fillMissingRetro,
+            'include' => $include ?? [],
             'page' => $this->input('page', 1),
             'per_page' => $this->input('per_page', 100),
             'deleted' => $this->input('deleted', 'exclude'),
@@ -40,12 +62,25 @@ class IndexMapRequest extends BaseRequest
         return [
             'timestamp' => ['nullable', 'integer', 'min:0'],
             'format_id' => ['nullable', 'integer', 'min:1', 'exists:formats,id'],
-            'format_subfilter' => ['nullable', 'integer', 'min:0'],
+            'format_subfilter' => ['nullable', 'array'],
+            'format_subfilter.*' => ['integer', 'min:0'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:150'],
-            'deleted' => ['nullable', 'in:only,exclude,any'],
+            'deleted' => ['nullable', 'in:only,exclude,any,only_or_hidden'],
             'created_by' => ['nullable', 'integer', 'min:1'],
             'verified_by' => ['nullable', 'integer', 'min:1'],
+            'sort_by' => ['nullable', 'in:placement_curver,placement_allver,difficulty,botb_difficulty,created_on'],
+            'fill_missing_retro' => [
+                'nullable',
+                'boolean',
+                function ($attribute, $value, $fail) {
+                    if ($value && (int) $this->input('format_id') !== FormatConstants::NOSTALGIA_PACK) {
+                        $fail('fill_missing_retro is only valid with format_id=' . FormatConstants::NOSTALGIA_PACK);
+                    }
+                },
+            ],
+            'include' => ['nullable', 'array'],
+            'include.*' => ['string', 'in:medals'],
         ];
     }
 
@@ -55,7 +90,8 @@ class IndexMapRequest extends BaseRequest
     public function messages(): array
     {
         return [
-            'deleted.in' => 'The deleted field must be one of: only, exclude, any.',
+            'deleted.in' => 'The deleted field must be one of: only, exclude, any, only_or_hidden.',
+            'sort_by.in' => 'The sort_by field must be one of: placement_curver, placement_allver, difficulty, botb_difficulty, created_on.',
         ];
     }
 }

@@ -26,6 +26,8 @@ Thumbs.db
 
 # Docker
 pgdata
+compose.yml
+compose.override.yml
 
 # Private
 old-api

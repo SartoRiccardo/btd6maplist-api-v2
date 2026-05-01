@@ -34,7 +34,8 @@ use Carbon\Carbon;
  *         description="List of proposed difficulty names",
  *         @OA\Items(type="string"),
  *         example={"Top 3", "Top 10", "#11 ~ 20"}
- *     )
+ *     ),
+ *     @OA\Property(property="is_no_geraldo_enabled", type="boolean", description="Whether No Geraldo runs are tracked for this format", example=true)
  * )
  */
 class UpdateFormatRequest extends BaseRequest
@@ -52,8 +53,8 @@ class UpdateFormatRequest extends BaseRequest
             'preview_map_1_code' => ['nullable', 'string', 'exists:maps,code'],
             'preview_map_2_code' => ['nullable', 'string', 'exists:maps,code'],
             'preview_map_3_code' => ['nullable', 'string', 'exists:maps,code'],
-            'map_submission_rules' => ['nullable', 'string'],
-            'completion_submission_rules' => ['nullable', 'string'],
+            'map_submission_rules' => ['required', 'string'],
+            'completion_submission_rules' => ['required', 'string'],
             'discord_server_url' => ['nullable', 'string'],
             'map_submission_wh' => ['nullable', 'url'],
             'run_submission_wh' => ['nullable', 'url'],
@@ -62,6 +63,7 @@ class UpdateFormatRequest extends BaseRequest
             'map_submission_status' => ['required', 'in:closed,open,open_chimps'],
             'emoji' => ['nullable', 'string', 'max:255'],
             'proposed_difficulties' => ['nullable', 'array'],
+            'is_no_geraldo_enabled' => ['nullable', 'boolean'],
         ];
     }
 
@@ -87,7 +89,7 @@ class UpdateFormatRequest extends BaseRequest
                     continue;
                 }
 
-                if (!$this->isMapValidForFormat((int) $mapId, (int) $formatId)) {
+                if (!$this->isMapValidForFormat($mapId, (int) $formatId)) {
                     $validator->errors()->add($fieldName, "The selected map is not valid for this format.");
                 }
             }

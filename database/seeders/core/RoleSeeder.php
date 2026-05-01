@@ -37,7 +37,7 @@ class RoleSeeder extends Seeder
         self::ROLES['MAPLIST_MODERATOR'] => ['name' => 'Maplist Moderator', 'assign_on_create' => false, 'internal' => false],
         self::ROLES['EXPERT_LIST_MODERATOR'] => ['name' => 'Expert List Moderator', 'assign_on_create' => false, 'internal' => false],
         self::ROLES['REQUIRES_RECORDINGS'] => ['name' => 'Requires Recordings', 'assign_on_create' => false, 'internal' => false],
-        self::ROLES['CAN_SUBMIT'] => ['name' => 'Can Submit', 'assign_on_create' => true, 'internal' => false],
+        self::ROLES['CAN_SUBMIT'] => ['name' => 'Can Submit', 'assign_on_create' => true, 'internal' => true],
         self::ROLES['BOTB_OWNER'] => ['name' => 'BotB Owner', 'assign_on_create' => false, 'internal' => false],
         self::ROLES['BOTB_CURATOR'] => ['name' => 'BotB Curator', 'assign_on_create' => false, 'internal' => false],
         self::ROLES['BOTB_VERIFIER'] => ['name' => 'BotB Verifier', 'assign_on_create' => false, 'internal' => false],
@@ -75,6 +75,7 @@ class RoleSeeder extends Seeder
         self::ROLES['TECHNICIAN'] => [
             'global' => [
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
                 'create:map',
                 'edit:map',
@@ -87,10 +88,12 @@ class RoleSeeder extends Seeder
                 'create:user',
                 'edit:self',
                 'ban:user',
+                'list:users',
                 'create:completion_submission',
                 'create:retro_map',
                 'edit:retro_map',
                 'delete:retro_map',
+                'edit:format_presentation',
             ],
         ],
         self::ROLES['MAPLIST_OWNER'] => [
@@ -104,6 +107,7 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
             FormatConstants::MAPLIST_ALL_VERSIONS => [
@@ -116,11 +120,13 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
             'global' => [
                 'create:user',
                 'ban:user',
+                'list:users',
             ],
         ],
         self::ROLES['EXPERT_LIST_OWNER'] => [
@@ -134,11 +140,13 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
             'global' => [
                 'create:user',
                 'ban:user',
+                'list:users',
             ],
         ],
         self::ROLES['MAPLIST_MODERATOR'] => [
@@ -151,6 +159,7 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
             FormatConstants::MAPLIST_ALL_VERSIONS => [
@@ -162,7 +171,11 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
+            ],
+            'global' => [
+                'list:users',
             ],
         ],
         self::ROLES['EXPERT_LIST_MODERATOR'] => [
@@ -175,47 +188,51 @@ class RoleSeeder extends Seeder
                 'edit:completion',
                 'delete:completion',
                 'delete:map_submission',
+                'edit:map_submission',
                 'edit:achievement_roles',
             ],
-        ],
-        self::ROLES['REQUIRES_RECORDINGS'] => [
             'global' => [
-                'require:completion_submission:recording',
-            ],
-        ],
-        self::ROLES['CAN_SUBMIT'] => [
-            'global' => [
-                'create:map_submission',
-                'create:completion_submission',
+                'list:users',
             ],
         ],
         self::ROLES['BOTB_OWNER'] => [
-            FormatConstants::EXPERT_LIST => [
+            FormatConstants::BEST_OF_THE_BEST => [
                 'create:map',
                 'edit:map',
                 'delete:map',
                 'edit:format_presentation',
+                'edit:map_submission',
                 'create:user',
                 'ban:user',
+            ],
+            'global' => [
+                'list:users',
             ],
         ],
         self::ROLES['BOTB_CURATOR'] => [
-            FormatConstants::EXPERT_LIST => [
+            FormatConstants::BEST_OF_THE_BEST => [
                 'create:map',
                 'edit:map',
                 'delete:map',
+                'edit:map_submission',
                 'create:user',
                 'ban:user',
             ],
+            'global' => [
+                'list:users',
+            ],
         ],
         self::ROLES['BOTB_VERIFIER'] => [
-            FormatConstants::EXPERT_LIST => [
+            FormatConstants::BEST_OF_THE_BEST => [
                 'edit:config',
                 'create:completion',
                 'edit:completion',
                 'delete:completion',
                 'create:user',
                 'ban:user',
+            ],
+            'global' => [
+                'list:users',
             ],
         ],
         self::ROLES['NOSTALGIA_OWNER'] => [
@@ -224,11 +241,15 @@ class RoleSeeder extends Seeder
                 'edit:map',
                 'delete:map',
                 'edit:format_presentation',
+                'edit:map_submission',
                 'create:user',
                 'ban:user',
                 'create:retro_map',
                 'edit:retro_map',
                 'delete:retro_map',
+            ],
+            'global' => [
+                'list:users',
             ],
         ],
         self::ROLES['NOSTALGIA_CURATOR'] => [
@@ -236,11 +257,15 @@ class RoleSeeder extends Seeder
                 'create:map',
                 'edit:map',
                 'delete:map',
+                'edit:map_submission',
                 'create:user',
                 'ban:user',
                 'create:retro_map',
                 'edit:retro_map',
                 'delete:retro_map',
+            ],
+            'global' => [
+                'list:users',
             ],
         ],
         self::ROLES['NOSTALGIA_VERIFIER'] => [
@@ -252,10 +277,25 @@ class RoleSeeder extends Seeder
                 'create:user',
                 'ban:user',
             ],
+            'global' => [
+                'list:users',
+            ],
         ],
+
         self::ROLES['BASIC_PERMS'] => [
             'global' => [
                 'edit:self',
+            ],
+        ],
+        self::ROLES['REQUIRES_RECORDINGS'] => [
+            'global' => [
+                'require:completion_submission:recording',
+            ],
+        ],
+        self::ROLES['CAN_SUBMIT'] => [
+            'global' => [
+                'create:map_submission',
+                'create:completion_submission',
             ],
         ],
     ];

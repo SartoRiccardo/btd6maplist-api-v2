@@ -234,9 +234,10 @@ class MapService
         }
 
         if ($allNull) {
-            throw ValidationException::withMessages([
-                'meta_fields' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
-            ]);
+            $message = 'At least one of these must be set';
+            throw ValidationException::withMessages(
+                array_combine($metaFields, array_fill(0, count($metaFields), $message))
+            );
         }
     }
 

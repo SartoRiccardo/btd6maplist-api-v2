@@ -12,6 +12,7 @@ use App\Models\Creator;
 use App\Models\Map;
 use App\Models\MapAlias;
 use App\Models\MapListMeta;
+use App\Models\RetroMap;
 use App\Models\Verification;
 use App\Services\MapService;
 use App\Services\UserService;
@@ -62,6 +63,10 @@ class MapController
         $verifiedBy = $validated['verified_by'] ?? null;
         $formatId = $validated['format_id'] ?? null;
         $formatSubfilter = $validated['format_subfilter'] ?? null;
+        $fillMissingRetro = $validated['fill_missing_retro'] ?? false;
+        $include = $validated['include'] ?? [];
+        $includeMedals = in_array('medals', $include);
+        $sortBy = $validated['sort_by'] ?? null;
 
         $latsetMetaCte = MapListMeta::activeAtTimestamp($timestamp);
 
@@ -69,8 +74,13 @@ class MapController
             ->setBindings($latsetMetaCte->getBindings())
             ->with(['retroMap.game'])
             ->forFormat($formatId)
-            ->forFormatSubfilter($formatId, $formatSubfilter)
-            ->sortForFormat($formatId);
+            ->forFormatSubfilter($formatId, $formatSubfilter);
+
+        if ($sortBy) {
+            $metaQuery->orderByRaw("{$sortBy} ASC NULLS LAST")->orderBy('created_on', 'asc');
+        } else {
+            $metaQuery->sortForFormat($formatId);
+        }
 
         // Apply deleted filter
         if ($deleted === 'only') {
@@ -79,6 +89,27 @@ class MapController
             $metaQuery->where(function ($query) use ($timestamp) {
                 $query->whereNull('deleted_on')
                     ->orWhere('deleted_on', '>', $timestamp);
+            });
+        } elseif ($deleted === 'only_or_hidden') {
+            $mapCount = Config::loadVars(['map_count'])->get('map_count', 50);
+            $metaQuery->where(function ($query) use ($timestamp, $mapCount) {
+                $query->where(function ($q) use ($timestamp) {
+                    $q->whereNotNull('deleted_on')
+                        ->where('deleted_on', '<=', $timestamp);
+                })->orWhere(function ($q) use ($mapCount) {
+                    $q->where(function ($inner) use ($mapCount) {
+                        $inner->whereNull('placement_curver')
+                            ->orWhere('placement_curver', '>', $mapCount);
+                    })
+                    ->where(function ($inner) use ($mapCount) {
+                        $inner->whereNull('placement_allver')
+                            ->orWhere('placement_allver', '>', $mapCount);
+                    })
+                    ->whereNull('difficulty')
+                    ->whereNull('botb_difficulty')
+                    ->whereNull('remake_of')
+                    ->whereNull('deleted_on');
+                });
             });
         }
 
@@ -130,8 +161,53 @@ class MapController
             })
             ->filter()
             ->values();
+        
+        // Include per-map medals for the authenticated user
+        if ($includeMedals) {
+            $user = auth()->guard('discord')->user();
+            if (!$user) {
+                return response()->json([
+                    'errors' => ['include' => ['medals requires authentication']],
+                ], 422);
+            }
 
-        return response()->json([
+            $activeCompCte = CompletionMeta::activeAtTimestamp($timestamp);
+            $mapCodes = $data->pluck('code')->filter()->values();
+
+            $medals = collect();
+            if ($mapCodes->isNotEmpty()) {
+                $medals = DB::table(DB::raw("({$activeCompCte->toSql()}) AS cm"))
+                    ->select('c.map_code')
+                    ->selectRaw('BOOL_OR(cm.black_border) AS black_border')
+                    ->selectRaw('BOOL_OR(cm.no_geraldo) AS no_geraldo')
+                    ->selectRaw('BOOL_OR(cm.lcc_id = lccs.id AND lccs.id IS NOT NULL) AS current_lcc')
+                    ->addBinding($activeCompCte->getBindings(), 'from')
+                    ->join('completions AS c', 'c.id', '=', 'cm.completion_id')
+                    ->join('comp_players AS cp', 'cp.run', '=', 'cm.id')
+                    ->leftJoin('lccs_by_map AS lccs', 'lccs.id', '=', 'cm.lcc_id')
+                    ->where('cp.user_id', $user->discord_id)
+                    ->whereIn('c.map_code', $mapCodes)
+                    ->whereNotNull('cm.accepted_by_id')
+                    ->whereNull('cm.deleted_on')
+                    ->groupBy('c.map_code')
+                    ->get()
+                    ->keyBy('map_code');
+            }
+
+            $data = $data->map(function ($entry) use ($medals) {
+                $code = $entry['code'] ?? null;
+                $m = $code ? $medals->get($code) : null;
+                $entry['medals'] = [
+                    'completed' => $m !== null,
+                    'black_border' => $m ? (bool) $m->black_border : false,
+                    'no_geraldo' => $m ? (bool) $m->no_geraldo : false,
+                    'current_lcc' => $m ? (bool) $m->current_lcc : false,
+                ];
+                return $entry;
+            });
+        }
+
+        $response = [
             'data' => $data,
             'meta' => [
                 'current_page' => $metaCodes->currentPage(),
@@ -139,7 +215,79 @@ class MapController
                 'per_page' => $metaCodes->perPage(),
                 'total' => $metaCodes->total(),
             ],
-        ]);
+        ];
+
+        // Backfill with unremade retro maps for Nostalgia Pack
+        if ($fillMissingRetro) {
+            $totalRemade = $metaCodes->total();
+            $activeMetaSql = $latsetMetaCte->toSql();
+            $activeMetaBindings = $latsetMetaCte->getBindings();
+
+            // Unremade retro maps: left join with active metas, keep where meta is null
+            $backfillQuery = RetroMap::with('game')
+                ->leftJoin(
+                    DB::raw("({$activeMetaSql}) AS active_meta"),
+                    function ($join) use ($timestamp) {
+                        $join->on('active_meta.remake_of', '=', 'retro_maps.id')
+                            ->where(function ($q) use ($timestamp) {
+                                $q->whereNull('active_meta.deleted_on')
+                                    ->orWhere('active_meta.deleted_on', '>', $timestamp);
+                            });
+                    }
+                )
+                ->addBinding($activeMetaBindings, 'join')
+                ->whereNull('active_meta.id')
+                ->select('retro_maps.*')
+                ->orderBy('retro_maps.retro_game_id')
+                ->orderBy('retro_maps.sort_order');
+
+            // Apply format_subfilter (game_id filter) if present
+            if (!empty($formatSubfilter)) {
+                $backfillQuery->whereHas('game', function ($q) use ($formatSubfilter) {
+                    $q->whereIn('game_id', $formatSubfilter);
+                });
+            }
+
+            $totalBackfill = $backfillQuery->count();
+            $backfillLimit = $perPage - $data->count();
+            $backfillOffset = max(0, ($page - 1) * $perPage - $totalRemade);
+
+            if ($backfillLimit > 0) {
+                $backfillMaps = $backfillQuery
+                    ->offset($backfillOffset)
+                    ->limit($backfillLimit)
+                    ->get()
+                    ->map(function ($retroMap) {
+                        return [
+                            'code' => null,
+                            'name' => $retroMap->name,
+                            'r6_start' => null,
+                            'map_data' => null,
+                            'map_preview_url' => $retroMap->preview_url,
+                            'map_notes' => null,
+                            'placement_curver' => null,
+                            'placement_allver' => null,
+                            'difficulty' => null,
+                            'optimal_heros' => [],
+                            'botb_difficulty' => null,
+                            'remake_of' => null,
+                            'deleted_on' => null,
+                            'retro_map' => $retroMap->toArray(),
+                            'is_verified' => false,
+                        ];
+                    });
+
+                $data = $data->concat($backfillMaps)->values();
+            }
+
+            $totalCombined = $totalRemade + $totalBackfill;
+
+            $response['data'] = $data;
+            $response['meta']['total'] = $totalCombined;
+            $response['meta']['last_page'] = (int) ceil($totalCombined / $perPage);
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -219,7 +367,7 @@ class MapController
             ...$meta->toArray(),
             'verifications' => $map->verifications->filter(function ($v) use ($currentBtd6Ver) {
                 return $v->version === null || $v->version === $currentBtd6Ver;
-            }),
+            })->values(),
             'aliases' => $map->aliases->pluck('alias')->sort()->values()->toArray(),
         ];
         $result['is_verified'] = $result['verifications']->isNotEmpty();
@@ -228,16 +376,11 @@ class MapController
         if ($includeCreatorsFlair) {
             $result['creators'] = $map->creators->map(function ($creator) use ($userService) {
                 $user = $creator->user;
-                $deco = null;
-                if ($user && $user->nk_oak) {
-                    $deco = $userService->getUserDeco($user->nk_oak);
+                if ($user) {
+                    $user->appendFlair();
+                    $userService->refreshUserCache($user);
                 }
-
-                return [
-                    ...$creator->toArray(),
-                    'avatar_url' => $deco['avatar_url'] ?? null,
-                    'banner_url' => $deco['banner_url'] ?? null,
-                ];
+                return $creator->toArray();
             });
         }
 
@@ -245,16 +388,11 @@ class MapController
         if ($includeVerifiersFlair) {
             $result['verifications'] = $result['verifications']->map(function ($verification) use ($userService) {
                 $user = $verification->user;
-                $deco = null;
-                if ($user && $user->nk_oak) {
-                    $deco = $userService->getUserDeco($user->nk_oak);
+                if ($user) {
+                    $user->appendFlair();
+                    $userService->refreshUserCache($user);
                 }
-
-                return [
-                    ...$verification->toArray(),
-                    'avatar_url' => $deco['avatar_url'] ?? null,
-                    'banner_url' => $deco['banner_url'] ?? null,
-                ];
+                return $verification->toArray();
             });
         }
 
@@ -395,7 +533,7 @@ class MapController
             );
 
             // Handle remake_of cleanup
-            if ($metaFields['remake_of'] !== null) {
+            if (($metaFields['remake_of'] ?? null) !== null) {
                 $mapService->clearPreviousRemakeOf($metaFields['remake_of'], $map->code, $now);
             }
 
@@ -576,7 +714,7 @@ class MapController
             }
 
             // Update verifiers
-            Verification::where('map_code', $map->code)->whereNull('version')->delete();
+            Verification::where('map_code', $map->code)->delete();
             foreach ($validated['verifiers'] ?? [] as $verifier) {
                 Verification::create([
                     'map_code' => $map->code,

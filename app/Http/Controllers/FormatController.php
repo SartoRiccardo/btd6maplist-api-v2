@@ -41,7 +41,7 @@ class FormatController
         $page = $validated['page'];
         $perPage = $validated['per_page'];
 
-        $formats = Format::query()
+        $formats = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])
             ->orderBy('id')
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -127,7 +127,7 @@ class FormatController
         $validated = $request->validated();
 
         // Separate fields by permission
-        $configFields = ['name', 'map_submission_wh', 'run_submission_wh', 'hidden', 'run_submission_status', 'map_submission_status', 'emoji', 'proposed_difficulties'];
+        $configFields = ['name', 'map_submission_wh', 'run_submission_wh', 'hidden', 'run_submission_status', 'map_submission_status', 'emoji', 'proposed_difficulties', 'is_no_geraldo_enabled'];
         $presentationFields = ['slug', 'description', 'button_text', 'preview_map_1_code', 'preview_map_2_code', 'preview_map_3_code', 'map_submission_rules', 'completion_submission_rules', 'discord_server_url'];
 
         $configData = array_intersect_key($validated, array_flip($configFields));
