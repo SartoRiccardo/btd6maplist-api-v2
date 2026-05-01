@@ -1,6 +1,6 @@
 FROM php:8.4-fpm-alpine
 
-RUN apk add --no-cache nginx postgresql-dev \
+RUN apk add --no-cache nginx postgresql-dev postgresql-client \
     && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && docker-php-ext-install pdo_pgsql pgsql pcntl opcache \
     && pecl install redis \
