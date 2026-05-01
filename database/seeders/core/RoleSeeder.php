@@ -20,14 +20,14 @@ class RoleSeeder extends Seeder
         'MAPLIST_MODERATOR' => 4,
         'EXPERT_LIST_MODERATOR' => 5,
         'REQUIRES_RECORDINGS' => 6,
-        'CAN_SUBMIT' => 7,
-        'BASIC_PERMS' => 14,
-        'BOTB_OWNER' => 8,
-        'BOTB_CURATOR' => 9,
-        'BOTB_VERIFIER' => 10,
-        'NOSTALGIA_OWNER' => 11,
-        'NOSTALGIA_CURATOR' => 12,
-        'NOSTALGIA_VERIFIER' => 13,
+        'CAN_SUBMIT' => 8,
+        'BASIC_PERMS' => 15,
+        'BOTB_OWNER' => 9,
+        'BOTB_CURATOR' => 10,
+        'BOTB_VERIFIER' => 11,
+        'NOSTALGIA_OWNER' => 12,
+        'NOSTALGIA_CURATOR' => 13,
+        'NOSTALGIA_VERIFIER' => 14,
     ];
 
     private static array $roles = [
