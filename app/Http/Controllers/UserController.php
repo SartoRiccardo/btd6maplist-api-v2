@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\UserService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class UserController
@@ -197,7 +198,11 @@ class UserController
 
         // Include achievement roles
         if ($includeAchRoles) {
-            $response['achievement_roles'] = AchievementRole::forUser($user->discord_id)->toArray();
+            $response['achievement_roles'] = Cache::remember(
+                "user:{$user->discord_id}:achievement_roles",
+                300,
+                fn() => AchievementRole::forUser($user->discord_id)->toArray()
+            );
         }
 
         // Include permissions grouped by permission name
@@ -210,9 +215,11 @@ class UserController
 
         // Include leaderboard ranks from all_leaderboards view
         if ($includeRanks) {
-            $rows = DB::table('all_leaderboards')
-                ->where('user_id', $user->discord_id)
-                ->get();
+            $rows = Cache::remember(
+                "user:{$user->discord_id}:ranks",
+                300,
+                fn() => DB::table('all_leaderboards')->where('user_id', $user->discord_id)->get()
+            );
 
             $response['ranks'] = $rows
                 ->groupBy('lb_format')
