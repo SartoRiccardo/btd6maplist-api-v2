@@ -13,6 +13,7 @@ services:
             POSTGRES_PASSWORD: btd6maplist
             PGDATA: /data/postgres
             POSTGRES_DB: btd6maplist
+
     postgres-test:
         image: postgres:16
         container_name: btd6maplist-api-v2-postgres-test
@@ -23,6 +24,7 @@ services:
             POSTGRES_PASSWORD: btd6maplist-test
             PGDATA: /data/postgres
             POSTGRES_DB: btd6maplist-test
+
     redis:
         image: redis
         ports:
