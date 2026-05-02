@@ -25,7 +25,7 @@ class FormatRuleSubsetSeeder extends Seeder
     public function run(): void
     {
         foreach (self::$rules as [$formatParent, $formatChild]) {
-            FormatRuleSubset::updateOrCreate([
+            FormatRuleSubset::firstOrCreate([
                 'format_parent' => $formatParent,
                 'format_child' => $formatChild,
             ]);

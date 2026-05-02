@@ -91,7 +91,7 @@ class RetroGameSeeder extends Seeder
     public function run(): void
     {
         foreach (self::$games as $game) {
-            RetroGame::updateOrCreate(
+            RetroGame::firstOrCreate(
                 [
                     'game_id' => $game['game_id'],
                     'category_id' => $game['category_id'],

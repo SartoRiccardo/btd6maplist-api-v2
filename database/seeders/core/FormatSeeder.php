@@ -94,7 +94,7 @@ class FormatSeeder extends Seeder
         }
 
         foreach (self::$formats as $id => $format) {
-            Format::updateOrCreate(
+            Format::firstOrCreate(
                 ['id' => $id],
                 $format
             );

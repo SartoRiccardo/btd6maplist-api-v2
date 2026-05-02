@@ -304,7 +304,7 @@ class RoleSeeder extends Seeder
     {
         // Seed roles
         foreach (self::$roles as $id => $role) {
-            Role::updateOrCreate(
+            Role::firstOrCreate(
                 ['id' => $id],
                 array_merge(['id' => $id], $role)
             );
@@ -312,7 +312,7 @@ class RoleSeeder extends Seeder
 
         // Seed role grants
         foreach (self::$roleGrants as [$roleRequired, $roleCanGrant]) {
-            RoleGrant::updateOrCreate(
+            RoleGrant::firstOrCreate(
                 [
                     'role_required' => $roleRequired,
                     'role_can_grant' => $roleCanGrant,
@@ -325,7 +325,7 @@ class RoleSeeder extends Seeder
             foreach ($formatPermissions as $formatKey => $permissions) {
                 $formatId = $formatKey === 'global' ? null : $formatKey;
                 foreach ($permissions as $permission) {
-                    RoleFormatPermission::updateOrCreate(
+                    RoleFormatPermission::firstOrCreate(
                         [
                             'role_id' => $roleId,
                             'format_id' => $formatId,

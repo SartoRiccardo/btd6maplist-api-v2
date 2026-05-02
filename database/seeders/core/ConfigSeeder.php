@@ -47,7 +47,7 @@ class ConfigSeeder extends Seeder
     {
         // Seed configs
         foreach (self::$configs as $name => $config) {
-            Config::updateOrCreate(
+            Config::firstOrCreate(
                 ['name' => $name],
                 array_merge(['name' => $name], $config)
             );
@@ -56,7 +56,7 @@ class ConfigSeeder extends Seeder
         // Seed config formats
         foreach (self::$configFormats as $formatId => $configNames) {
             foreach ($configNames as $configName) {
-                ConfigFormat::updateOrCreate(
+                ConfigFormat::firstOrCreate(
                     [
                         'config_name' => $configName,
                         'format_id' => $formatId,
