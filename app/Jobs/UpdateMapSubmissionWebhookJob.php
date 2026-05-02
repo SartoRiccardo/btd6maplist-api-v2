@@ -16,8 +16,6 @@ class UpdateMapSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $queue = Queues::DISCORD;
-
     public int $submissionId;
     public bool $fail;
 
@@ -28,6 +26,7 @@ class UpdateMapSubmissionWebhookJob implements ShouldQueue
     {
         $this->submissionId = $submissionId;
         $this->fail = $fail;
+        $this->onQueue(Queues::DISCORD);
     }
 
     /**

@@ -21,8 +21,6 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $queue = Queues::DISCORD;
-
     public int $submissionId;
 
     /**
@@ -31,6 +29,7 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
     public function __construct(int $submissionId)
     {
         $this->submissionId = $submissionId;
+        $this->onQueue(Queues::DISCORD);
     }
 
     /**

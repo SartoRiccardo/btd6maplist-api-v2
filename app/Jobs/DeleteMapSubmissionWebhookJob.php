@@ -15,8 +15,6 @@ class DeleteMapSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $queue = Queues::DISCORD;
-
     public string $webhookUrl;
     public string $messageId;
 
@@ -27,6 +25,7 @@ class DeleteMapSubmissionWebhookJob implements ShouldQueue
     {
         $this->webhookUrl = $webhookUrl;
         $this->messageId = $messageId;
+        $this->onQueue(Queues::DISCORD);
     }
 
     /**

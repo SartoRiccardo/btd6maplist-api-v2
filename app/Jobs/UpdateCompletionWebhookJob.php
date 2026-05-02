@@ -19,8 +19,6 @@ class UpdateCompletionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $queue = Queues::DISCORD;
-
     public int $completionId;
     public bool $fail;
 
@@ -31,6 +29,7 @@ class UpdateCompletionWebhookJob implements ShouldQueue
     {
         $this->completionId = $completionId;
         $this->fail = $fail;
+        $this->onQueue(Queues::DISCORD);
     }
 
     /**

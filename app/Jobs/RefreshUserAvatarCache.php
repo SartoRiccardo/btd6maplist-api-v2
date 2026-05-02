@@ -16,8 +16,6 @@ class RefreshUserAvatarCache implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $queue = Queues::CACHE;
-
     public int $userId;
 
     /**
@@ -26,6 +24,7 @@ class RefreshUserAvatarCache implements ShouldQueue
     public function __construct(int $userId)
     {
         $this->userId = $userId;
+        $this->onQueue(Queues::CACHE);
     }
 
     /**

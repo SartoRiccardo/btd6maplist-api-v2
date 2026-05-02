@@ -19,8 +19,6 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $queue = Queues::DISCORD;
-
     public int $completionId;
 
     /**
@@ -29,6 +27,7 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
     public function __construct(int $completionId)
     {
         $this->completionId = $completionId;
+        $this->onQueue(Queues::DISCORD);
     }
 
     /**
