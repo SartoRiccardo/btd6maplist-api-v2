@@ -45,16 +45,9 @@ Route::prefix('roles')->group(function () {
     Route::post('/achievement/updates', fn() => response()->noContent(501));
 });
 
-Route::prefix('completions')->group(function () {
-    /**
-     * ❓ Unknown: Bot route
-     */
-    Route::put('{cid}/accept', fn() => response()->noContent(501));
-
-    /**
-     * ❓ Unknown: Bot route
-     */
-    Route::delete('{cid}', fn() => response()->noContent(501));
+Route::prefix('completions')->middleware(['bot.signature', 'bot.user'])->group(function () {
+    Route::post('accept', [\App\Http\Controllers\CompletionController::class, 'accept']);
+    Route::post('reject', [\App\Http\Controllers\CompletionController::class, 'reject']);
 });
 
 Route::prefix('users')->middleware(['bot.signature', 'bot.user'])->group(function () {

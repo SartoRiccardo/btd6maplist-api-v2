@@ -576,6 +576,136 @@ class CompletionController
     }
 
     /**
+     * @OA\Post(
+     *     path="/bot/completions/accept",
+     *     summary="Accept a completion (bot)",
+     *     description="Accepts a pending completion identified by its Discord webhook message ID. Returns 422 if the completion is already accepted. Requires edit:completion permission for the completion's format.",
+     *     tags={"Bot", "Completions"},
+     *     security={{"botAuth":{}}},
+     *     @OA\Parameter(name="X-Timestamp", in="header", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *             required={"_user", "completion_webhook_message_id"},
+     *             @OA\Property(property="_user", ref="#/components/schemas/BotUser"),
+     *             @OA\Property(property="completion_webhook_message_id", type="string", example="1234567890123456789")
+     *         ))
+     *     ),
+     *     @OA\Response(response=204, description="Completion accepted"),
+     *     @OA\Response(response=401, description="Missing, expired, or invalid bot signature"),
+     *     @OA\Response(response=403, description="Forbidden - missing edit:completion permission"),
+     *     @OA\Response(response=404, description="Completion not found"),
+     *     @OA\Response(response=422, description="Completion is not pending, or invalid payload")
+     * )
+     */
+    public function accept(Request $request)
+    {
+        $whMsgId = $request->input('completion_webhook_message_id');
+        if (!$whMsgId) {
+            return response()->json(['message' => 'Missing completion_webhook_message_id.'], 422);
+        }
+
+        $now = Carbon::now();
+        $user = auth()->guard('discord')->user();
+
+        $completion = Completion::where('wh_msg_id', $whMsgId)->first();
+        if (!$completion) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $existingMeta = CompletionMeta::activeForCompletion($completion->id, $now);
+        if (!$existingMeta) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        if ($existingMeta->accepted_by_id !== null) {
+            return response()->json(['message' => 'Completion is not pending.'], 422);
+        }
+
+        $userFormatIds = $user->formatsWithPermission('edit:completion');
+        $hasGlobalPermission = in_array(null, $userFormatIds, true);
+        $hasFormatPermission = in_array($existingMeta->format_id, $userFormatIds, true);
+
+        if (!$hasGlobalPermission && !$hasFormatPermission) {
+            return response()->json(['message' => 'Forbidden - You do not have permission to accept completions for this format.'], 403);
+        }
+
+        $existingMeta->accepted_by_id = $user->discord_id;
+        $existingMeta->save();
+
+        if ($completion->wh_msg_id) {
+            UpdateCompletionWebhookJob::dispatch($completion->id, fail: false);
+        }
+
+        return response()->noContent();
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/bot/completions/reject",
+     *     summary="Reject a completion (bot)",
+     *     description="Soft-deletes a pending completion identified by its Discord webhook message ID. Returns 422 if the completion is already accepted. Requires edit:completion permission for the completion's format.",
+     *     tags={"Bot", "Completions"},
+     *     security={{"botAuth":{}}},
+     *     @OA\Parameter(name="X-Timestamp", in="header", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *             required={"_user", "completion_webhook_message_id"},
+     *             @OA\Property(property="_user", ref="#/components/schemas/BotUser"),
+     *             @OA\Property(property="completion_webhook_message_id", type="string", example="1234567890123456789")
+     *         ))
+     *     ),
+     *     @OA\Response(response=204, description="Completion rejected"),
+     *     @OA\Response(response=401, description="Missing, expired, or invalid bot signature"),
+     *     @OA\Response(response=403, description="Forbidden - missing edit:completion permission"),
+     *     @OA\Response(response=404, description="Completion not found"),
+     *     @OA\Response(response=422, description="Completion is not pending, or invalid payload")
+     * )
+     */
+    public function reject(Request $request)
+    {
+        $whMsgId = $request->input('completion_webhook_message_id');
+        if (!$whMsgId) {
+            return response()->json(['message' => 'Missing completion_webhook_message_id.'], 422);
+        }
+
+        $now = Carbon::now();
+        $user = auth()->guard('discord')->user();
+
+        $completion = Completion::where('wh_msg_id', $whMsgId)->first();
+        if (!$completion) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $existingMeta = CompletionMeta::activeForCompletion($completion->id, $now);
+        if (!$existingMeta) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        if ($existingMeta->accepted_by_id !== null) {
+            return response()->json(['message' => 'Completion is not pending.'], 422);
+        }
+
+        $userFormatIds = $user->formatsWithPermission('edit:completion');
+        $hasGlobalPermission = in_array(null, $userFormatIds, true);
+        $hasFormatPermission = in_array($existingMeta->format_id, $userFormatIds, true);
+
+        if (!$hasGlobalPermission && !$hasFormatPermission) {
+            return response()->json(['message' => 'Forbidden - You do not have permission to reject completions for this format.'], 403);
+        }
+
+        $existingMeta->deleted_on = $now;
+        $existingMeta->save();
+
+        if ($completion->wh_msg_id) {
+            UpdateCompletionWebhookJob::dispatch($completion->id, fail: true);
+        }
+
+        return response()->noContent();
+    }
+
+    /**
      * Remove the specified completion from storage (soft delete).
      *
      * @OA\Delete(
