@@ -7,8 +7,6 @@ use App\Constants\Queues;
 use App\Constants\ProofType;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
-use App\Models\Format;
-use App\Models\LeastCostChimps;
 use App\Services\Discord\DiscordWebhookClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,7 +19,7 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public string $queue = Queues::DISCORD;
+    public $queue = Queues::DISCORD;
 
     public int $completionId;
 

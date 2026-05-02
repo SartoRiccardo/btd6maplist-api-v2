@@ -16,7 +16,7 @@ class RefreshUserAvatarCache implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public string $queue = Queues::CACHE;
+    public $queue = Queues::CACHE;
 
     public int $userId;
 

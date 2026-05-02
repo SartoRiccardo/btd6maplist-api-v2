@@ -15,7 +15,7 @@ class DeleteMapSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public string $queue = Queues::DISCORD;
+    public $queue = Queues::DISCORD;
 
     public string $webhookUrl;
     public string $messageId;
