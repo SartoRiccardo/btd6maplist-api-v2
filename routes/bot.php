@@ -69,7 +69,5 @@ Route::prefix('users')->group(function () {
     Route::put('{uid}', fn() => response()->noContent(501));
 });
 
-/**
- * ❓ Unknown: Bot route
- */
-Route::put('/read-rules', fn() => response()->noContent(501));
+Route::put('/read-rules', [\App\Http\Controllers\UserController::class, 'readRules'])
+    ->middleware(['bot.signature', 'bot.user']);
