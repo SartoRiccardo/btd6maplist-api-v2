@@ -26,13 +26,6 @@ Route::prefix('maps')->group(function () {
     });
 });
 
-Route::prefix('formats')->group(function () {
-    /**
-     * ❓ Unknown: Bot route
-     */
-    Route::get('/', fn() => response()->noContent(501));
-});
-
 Route::prefix('roles')->group(function () {
     /**
      * ❓ Unknown: Bot route
