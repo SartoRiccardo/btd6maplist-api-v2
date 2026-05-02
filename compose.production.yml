@@ -1,34 +1,70 @@
 name: btd6maplist-api-v2
 
 services:
-    app:
-        build: .
-        image: btd6maplist-api
-        ports:
-            - "8000:80"
-        env_file: .env
-        depends_on:
-            - postgres
-            - redis
+  app:
+    build: .
+    image: btd6maplist-api
+    ports:
+      - "8000:80"
+    env_file: .env
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - app-storage:/var/www/html/storage/app/public
 
-    worker:
-        image: btd6maplist-api
-        command: php artisan queue:work --sleep=3 --tries=3
-        env_file: .env
-        depends_on:
-            - app
-            - postgres
-            - redis
+  worker-user:
+    image: btd6maplist-api
+    command: php artisan queue:work --queue=user --sleep=3 --tries=3
+    env_file: .env
+    depends_on:
+      - app
+      - postgres
+      - redis
+    volumes:
+      - app-storage:/var/www/html/storage/app/public
+    deploy:
+      replicas: 2
 
-    postgres:
-        image: postgres:16
-        volumes:
-            - ./pgdata:/data/postgres
-        environment:
-            POSTGRES_USER: btd6maplist
-            POSTGRES_PASSWORD: btd6maplist
-            PGDATA: /data/postgres
-            POSTGRES_DB: btd6maplist
+  worker-discord:
+    image: btd6maplist-api
+    command: php artisan queue:work --queue=discord --sleep=3 --tries=3
+    env_file: .env
+    depends_on:
+      - app
+      - postgres
+      - redis
+    volumes:
+      - app-storage:/var/www/html/storage/app/public
 
-    redis:
-        image: redis
+  worker-default:
+    image: btd6maplist-api
+    command: php artisan queue:work --queue=default --sleep=3 --tries=3
+    env_file: .env
+    depends_on:
+      - app
+      - postgres
+      - redis
+    volumes:
+      - app-storage:/var/www/html/storage/app/public
+
+  postgres:
+    image: postgres:16
+    volumes:
+      - ./pgdata:/data/postgres
+    environment:
+      POSTGRES_USER: btd6maplist
+      POSTGRES_PASSWORD: btd6maplist
+      PGDATA: /data/postgres
+      POSTGRES_DB: btd6maplist
+
+  redis:
+    image: redis
+
+volumes:
+  app-storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./storage/app/public
