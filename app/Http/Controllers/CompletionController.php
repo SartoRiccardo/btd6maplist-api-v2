@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Completion\IndexCompletionRequest;
+use App\Http\Requests\Completion\StoreBotCompletionRequest;
 use App\Http\Requests\Completion\StoreCompletionRequest;
 use App\Http\Requests\Completion\UpdateCompletionRequest;
 use App\Jobs\SendCompletionSubmissionWebhookJob;
@@ -377,6 +378,23 @@ class CompletionController
         $result = $service->create($data, $user, autoAccept: false);
 
         // Dispatch webhook job
+        SendCompletionSubmissionWebhookJob::dispatch($result['completion_id']);
+
+        return response()->json(['id' => $result['completion_id']], 201);
+    }
+
+    public function submitByBot(StoreBotCompletionRequest $request, CompletionService $service)
+    {
+        $user = auth()->guard('discord')->user();
+        $data = $request->validated();
+
+        $data['proof_images'] = $request->file('proof_images', []);
+
+        $validator = app(CompletionSubmissionValidatorFactory::class)->getValidator($data['format_id']);
+        $validator->validate($data, $user);
+
+        $result = $service->create($data, $user, autoAccept: false);
+
         SendCompletionSubmissionWebhookJob::dispatch($result['completion_id']);
 
         return response()->json(['id' => $result['completion_id']], 201);

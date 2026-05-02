@@ -7,13 +7,6 @@ Route::prefix('maps')->middleware(['bot.signature', 'bot.user'])->group(function
         Route::post('/', [\App\Http\Controllers\MapSubmissionController::class, 'store']);
         Route::post('/reject', [\App\Http\Controllers\MapSubmissionController::class, 'rejectByWebhook']);
     });
-
-    Route::prefix('{code}/completions')->group(function () {
-        /**
-         * ❓ Unknown: Bot route
-         */
-        Route::post('/submit', fn() => response()->noContent(501));
-    });
 });
 
 Route::prefix('roles')->group(function () {
@@ -29,6 +22,7 @@ Route::prefix('roles')->group(function () {
 });
 
 Route::prefix('completions')->middleware(['bot.signature', 'bot.user'])->group(function () {
+    Route::post('submit', [\App\Http\Controllers\CompletionController::class, 'submitByBot']);
     Route::post('accept', [\App\Http\Controllers\CompletionController::class, 'accept']);
     Route::post('reject', [\App\Http\Controllers\CompletionController::class, 'reject']);
 });
