@@ -5,11 +5,10 @@ namespace App\Jobs;
 use App\Constants\DiscordColors;
 use App\Constants\Queues;
 use App\Constants\FormatConstants;
-use App\Models\Map;
 use App\Models\MapSubmission;
 use App\Models\RetroMap;
+use App\Services\NinjaKiwi\NinjaKiwiApiClient;
 use App\Services\Discord\DiscordWebhookClient;
-use App\Services\UserService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -52,25 +51,16 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
             return; // No webhook configured for this format
         }
 
-        // Fetch map data
-        $map = Map::find($submission->code);
-
-        if (!$map) {
-            Log::warning('Map not found for submission webhook', [
-                'map_code' => $submission->code,
-                'submission_id' => $this->submissionId,
-            ]);
-            return;
-        }
-
         // Fetch Ninja Kiwi avatar URL from cache if available
         $avatarUrl = null;
         if ($submission->submitter->nk_oak) {
             $avatarUrl = $submission->submitter->avatar_url;
         }
 
+        $mapName = NinjaKiwiApiClient::getMapName($submission->code) ?? $submission->code;
+
         // Build embeds
-        $embeds = $this->buildEmbeds($submission, $map, $avatarUrl);
+        $embeds = $this->buildEmbeds($submission, $mapName, $avatarUrl);
 
         $payload = [
             'embeds' => $embeds,
@@ -96,10 +86,10 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
      *
      * @return array<int, array>
      */
-    private function buildEmbeds(MapSubmission $submission, Map $map, ?string $avatarUrl): array
+    private function buildEmbeds(MapSubmission $submission, string $mapName, ?string $avatarUrl): array
     {
-        $embed1 = $this->buildInfoEmbed($submission, $map, $avatarUrl);
-        $embed2 = $this->buildImageEmbed($map);
+        $embed1 = $this->buildInfoEmbed($submission, $mapName, $avatarUrl);
+        $embed2 = $this->buildImageEmbed($submission->code);
 
         return [$embed1, $embed2];
     }
@@ -107,10 +97,10 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
     /**
      * Build the primary info embed.
      */
-    private function buildInfoEmbed(MapSubmission $submission, Map $map, ?string $avatarUrl): array
+    private function buildInfoEmbed(MapSubmission $submission, string $mapName, ?string $avatarUrl): array
     {
         $embed = [
-            'title' => "{$map->name} - {$submission->code}",
+            'title' => "{$mapName} - {$submission->code}",
             'url' => "https://join.btd6.com/Map/{$submission->code}",
             'color' => DiscordColors::PENDING,
             'author' => [
@@ -137,12 +127,12 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
     /**
      * Build the image embed.
      */
-    private function buildImageEmbed(Map $map): array
+    private function buildImageEmbed(string $code): array
     {
         return [
-            'url' => "https://join.btd6.com/Map/{$map->code}",
+            'url' => "https://join.btd6.com/Map/{$code}",
             'image' => [
-                'url' => $map->map_preview_url,
+                'url' => "https://data.ninjakiwi.com/btd6/maps/map/{$code}/preview",
             ],
         ];
     }
