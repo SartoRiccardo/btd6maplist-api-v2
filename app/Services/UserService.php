@@ -84,4 +84,15 @@ class UserService
 
         return $deco['avatar_url'] !== null || $deco['banner_url'] !== null;
     }
+
+    /**
+     * Update a user's nk_oak and refresh their avatar cache.
+     * Shared by PUT /api/users/{id} and PUT /bot/users/{uid}.
+     */
+    public function updateOak(User $user, ?string $nkOak): void
+    {
+        $user->nk_oak = $nkOak;
+        $user->save();
+        $this->refreshUserCache($user);
+    }
 }

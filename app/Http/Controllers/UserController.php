@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\User\CreateUserRequest;
+use App\Http\Requests\User\UpdateOakRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\AchievementRole;
 use App\Models\Role;
@@ -345,13 +346,15 @@ class UserController
             }
         }
 
-        // Update user with validated data
-        $targetUser->update($validatedData);
+        $userService = app(UserService::class);
 
-        // Refresh cache if nk_oak was changed and cache is stale
         if (isset($validatedData['nk_oak'])) {
-            $userService = app(UserService::class);
-            $userService->refreshUserCache($targetUser);
+            $userService->updateOak($targetUser, $validatedData['nk_oak']);
+            unset($validatedData['nk_oak']);
+        }
+
+        if (!empty($validatedData)) {
+            $targetUser->update($validatedData);
         }
 
         return response()->json($targetUser);
@@ -572,6 +575,66 @@ class UserController
         return response()->noContent();
     }
 
+    /**
+     * @OA\Put(
+     *     path="/bot/users/{uid}",
+     *     summary="Update user OAK (bot)",
+     *     description="Updates the authenticated user's Ninja Kiwi Open Access Key. The user identified by {uid} must match the _user payload. Requires the edit:self permission.",
+     *     tags={"Bot", "Users"},
+     *     security={{"botAuth":{}}},
+     *     @OA\Parameter(name="uid", in="path", required=true, description="Discord ID of the user to update", @OA\Schema(type="string", example="123456789012345678")),
+     *     @OA\Parameter(name="X-Timestamp", in="header", required=true, description="Unix timestamp of the request (must be within 5 minutes)", @OA\Schema(type="integer", example=1714669200)),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *             required={"_user"},
+     *             @OA\Property(property="_user", ref="#/components/schemas/BotUser"),
+     *             @OA\Property(property="nk_oak", type="string", nullable=true, description="Ninja Kiwi Open Access Key", example="oak_abc123")
+     *         ))
+     *     ),
+     *     @OA\Response(response=204, description="OAK updated successfully"),
+     *     @OA\Response(response=401, description="Missing, expired, or invalid bot signature"),
+     *     @OA\Response(response=403, description="Forbidden - missing edit:self permission or uid mismatch"),
+     *     @OA\Response(response=422, description="Invalid _user payload or invalid OAK")
+     * )
+     */
+    public function updateOak(UpdateOakRequest $request, string $uid)
+    {
+        $user = auth()->guard('discord')->user();
+
+        if (!$user->hasPermission('edit:self', null)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($uid !== $user->discord_id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        app(UserService::class)->updateOak($user, $request->validated()['nk_oak'] ?? null);
+
+        return response()->noContent();
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/bot/read-rules",
+     *     summary="Mark rules as read (bot)",
+     *     description="Sets has_seen_popup to true for the user identified by the _user payload.",
+     *     tags={"Bot", "Users"},
+     *     security={{"botAuth":{}}},
+     *     @OA\Parameter(name="X-Timestamp", in="header", required=true, description="Unix timestamp of the request (must be within 5 minutes)", @OA\Schema(type="integer", example=1714669200)),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *             required={"_user"},
+     *             @OA\Property(property="_user", ref="#/components/schemas/BotUser")
+     *         ))
+     *     ),
+     *     @OA\Response(response=204, description="Rules marked as read"),
+     *     @OA\Response(response=401, description="Missing, expired, or invalid bot signature"),
+     *     @OA\Response(response=422, description="Invalid _user payload")
+     * )
+     */
     public function readRules(Request $request)
     {
         $user = auth()->guard('discord')->user();

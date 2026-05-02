@@ -57,16 +57,8 @@ Route::prefix('completions')->group(function () {
     Route::delete('{cid}', fn() => response()->noContent(501));
 });
 
-Route::prefix('users')->group(function () {
-    /**
-     * ❓ Unknown: Bot route
-     */
-    Route::get('{uid}', fn() => response()->noContent(501));
-
-    /**
-     * ❓ Unknown: Bot route
-     */
-    Route::put('{uid}', fn() => response()->noContent(501));
+Route::prefix('users')->middleware(['bot.signature', 'bot.user'])->group(function () {
+    Route::put('{uid}', [\App\Http\Controllers\UserController::class, 'updateOak']);
 });
 
 Route::put('/read-rules', [\App\Http\Controllers\UserController::class, 'readRules'])
