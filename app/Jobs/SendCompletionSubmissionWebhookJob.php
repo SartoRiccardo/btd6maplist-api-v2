@@ -90,24 +90,27 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
     private function buildEmbed(Completion $completion, CompletionMeta $meta): array
     {
         $map = $completion->map;
+        $format = $meta->format;
 
-        // Get player names
-        $playerNames = $meta->players->pluck('name')->implode(', ');
+        $formatLabel = $format->emoji
+            ? "{$format->emoji} {$format->name}"
+            : $format->name;
 
-        // Build flags
-        $flags = [];
+        // Build flag emojis — only shown when at least one is set
+        $flagEmojis = [];
+        if ($meta->lcc_id && $meta->lcc) {
+            $flagEmojis[] = '<:m_lcc:1285726686117236828>';
+        }
         if ($meta->black_border) {
-            $flags[] = 'BB';
+            $flagEmojis[] = '<:m_bb:1285726683709702205>';
         }
         if ($meta->no_geraldo) {
-            $flags[] = 'NoG';
+            $flagEmojis[] = '<:m_noopthero:1285726689845968936>';
         }
-        $flagsStr = empty($flags) ? 'None' : implode(', ', $flags);
 
-        // Get LCC leftover
-        $lccText = 'N/A';
+        // Get LCC leftover — only shown when present
+        $lccText = null;
         if ($meta->lcc_id && $meta->lcc) {
-            // lcc accessor returns an array, so we can access it directly
             $lccData = $meta->lcc;
             if (is_array($lccData) && isset($lccData['leftover'])) {
                 $lccText = "\${$lccData['leftover']}";
@@ -133,31 +136,34 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
             $avatarUrl = $submitter->avatar_url;
         }
 
+        $fields = [
+            [
+                'name' => 'Format',
+                'value' => $formatLabel,
+                'inline' => true,
+            ],
+        ];
+
+        if (!empty($flagEmojis)) {
+            $fields[] = [
+                'name' => 'Flags',
+                'value' => implode(' ', $flagEmojis),
+                'inline' => true,
+            ];
+        }
+
+        if ($lccText !== null) {
+            $fields[] = [
+                'name' => 'LCC Leftover',
+                'value' => $lccText,
+                'inline' => true,
+            ];
+        }
+
         $embed = [
             'title' => "Run Submission: {$map->name} - {$map->code}",
             'color' => DiscordColors::PENDING,
-            'fields' => [
-                [
-                    'name' => 'Format',
-                    'value' => $meta->format->name,
-                    'inline' => true,
-                ],
-                [
-                    'name' => 'Players',
-                    'value' => $playerNames ?: 'Unknown',
-                    'inline' => true,
-                ],
-                [
-                    'name' => 'Flags',
-                    'value' => $flagsStr,
-                    'inline' => true,
-                ],
-                [
-                    'name' => 'LCC Leftover',
-                    'value' => $lccText,
-                    'inline' => true,
-                ],
-            ],
+            'fields' => $fields,
         ];
 
         // Add author with avatar if available
