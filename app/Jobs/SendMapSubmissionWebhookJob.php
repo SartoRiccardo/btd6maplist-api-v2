@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Constants\DiscordColors;
+use App\Constants\Queues;
 use App\Constants\FormatConstants;
 use App\Models\Map;
 use App\Models\MapSubmission;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\Log;
 class SendMapSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public string $queue = Queues::DISCORD;
 
     public int $submissionId;
 

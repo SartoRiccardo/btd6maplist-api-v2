@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Constants\Queues;
 use App\Services\Discord\DiscordWebhookClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Log;
 class DeleteMapSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public string $queue = Queues::DISCORD;
 
     public string $webhookUrl;
     public string $messageId;

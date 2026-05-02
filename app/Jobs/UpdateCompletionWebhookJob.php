@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Constants\Queues;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
 use App\Models\Format;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Log;
 class UpdateCompletionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public string $queue = Queues::DISCORD;
 
     public int $completionId;
     public bool $fail;

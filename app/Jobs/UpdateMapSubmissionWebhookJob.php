@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Constants\Queues;
 use App\Models\MapSubmission;
 use App\Services\Discord\DiscordEmbedService;
 use Illuminate\Bus\Queueable;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Log;
 class UpdateMapSubmissionWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public string $queue = Queues::DISCORD;
 
     public int $submissionId;
     public bool $fail;

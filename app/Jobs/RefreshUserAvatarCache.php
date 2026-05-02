@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Constants\Queues;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Bus\Queueable;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Log;
 class RefreshUserAvatarCache implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public string $queue = Queues::CACHE;
 
     public int $userId;
 
