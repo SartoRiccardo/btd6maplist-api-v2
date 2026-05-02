@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Model;
  *     @OA\Property(property="discord_server_url", type="string", format="uri", nullable=true, description="Discord server invite URL"),
  *     @OA\Property(property="hidden", type="boolean", description="Whether the format is hidden", example=false),
  *     @OA\Property(property="run_submission_status", type="string", enum={"closed", "open", "lcc_only"}, description="Run submission status", example="open"),
- *     @OA\Property(property="map_submission_status", type="string", enum={"closed", "open", "open_chimps"}, description="Map submission status", example="open_chimps"),
+ *     @OA\Property(property="map_submission_status", type="string", enum={"closed", "open"}, description="Map submission status", example="open"),
  *     @OA\Property(property="proposed_difficulties", type="array", nullable=true, description="List of proposed difficulty names", @OA\Items(type="string")),
  *     @OA\Property(property="is_no_geraldo_enabled", type="boolean", description="Whether No Geraldo runs are tracked for this format", example=true),
  *     @OA\Property(property="is_lcc_leaderboard_enabled", type="boolean", description="Whether the LCC leaderboard is enabled for this format", example=true),

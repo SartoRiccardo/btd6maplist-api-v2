@@ -25,7 +25,7 @@ use Carbon\Carbon;
  *     @OA\Property(property="run_submission_wh", type="string", format="uri", nullable=true, description="Discord webhook URL for run submissions", example="https://discord.com/api/webhooks/..."),
  *     @OA\Property(property="hidden", type="boolean", description="Whether the format is hidden", example=false),
  *     @OA\Property(property="run_submission_status", type="string", enum={"closed", "open", "lcc_only"}, description="Run submission status", example="open"),
- *     @OA\Property(property="map_submission_status", type="string", enum={"closed", "open", "open_chimps"}, description="Map submission status", example="open_chimps"),
+ *     @OA\Property(property="map_submission_status", type="string", enum={"closed", "open"}, description="Map submission status", example="open"),
  *     @OA\Property(property="emoji", type="string", maxLength=255, nullable=true, description="Format emoji", example="🎮"),
  *     @OA\Property(
  *         property="proposed_difficulties",
@@ -63,7 +63,7 @@ class UpdateFormatRequest extends BaseRequest
             'run_submission_wh' => ['nullable', 'url'],
             'hidden' => ['required', 'boolean'],
             'run_submission_status' => ['required', 'in:closed,open,lcc_only'],
-            'map_submission_status' => ['required', 'in:closed,open,open_chimps'],
+            'map_submission_status' => ['required', 'in:closed,open'],
             'emoji' => ['nullable', 'string', 'max:255'],
             'proposed_difficulties' => ['nullable', 'array'],
             'is_no_geraldo_enabled' => ['nullable', 'boolean'],

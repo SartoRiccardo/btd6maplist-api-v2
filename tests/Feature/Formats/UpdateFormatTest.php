@@ -49,7 +49,7 @@ class UpdateFormatTest extends TestCase
             'name' => 'Updated Name',
             'hidden' => true,
             'run_submission_status' => 'open',
-            'map_submission_status' => 'open_chimps',
+            'map_submission_status' => 'open',
         ];
     }
 
@@ -70,7 +70,7 @@ class UpdateFormatTest extends TestCase
             'name' => 'Updated Name',
             'hidden' => true,
             'run_submission_status' => 'open',
-            'map_submission_status' => 'open_chimps',
+            'map_submission_status' => 'open',
         ];
 
         $this->actingAs($user, 'discord')
@@ -102,7 +102,7 @@ class UpdateFormatTest extends TestCase
             'name' => 'Updated Name',
             'hidden' => true,
             'run_submission_status' => 'open',
-            'map_submission_status' => 'open_chimps',
+            'map_submission_status' => 'open',
         ];
 
         $this->actingAs($user, 'discord')
@@ -233,7 +233,7 @@ class UpdateFormatTest extends TestCase
             'name' => 'Updated via Global Permission',
             'hidden' => true,
             'run_submission_status' => 'open',
-            'map_submission_status' => 'open_chimps',
+            'map_submission_status' => 'open',
         ];
 
         $this->actingAs($user, 'discord')
@@ -350,7 +350,7 @@ class UpdateFormatTest extends TestCase
             'description' => 'Full update',
             'hidden' => true,
             'run_submission_status' => 'open',
-            'map_submission_status' => 'open_chimps',
+            'map_submission_status' => 'open',
         ];
 
         $this->actingAs($user, 'discord')

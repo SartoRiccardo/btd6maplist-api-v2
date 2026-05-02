@@ -21,7 +21,7 @@ class ResponseStructureTest extends TestCase
             'name' => 'Test Format',
             'hidden' => false,
             'run_submission_status' => 'open',
-            'map_submission_status' => 'open_chimps',
+            'map_submission_status' => 'open',
         ]);
         $format = Format::findOrFail($format->id);
 
