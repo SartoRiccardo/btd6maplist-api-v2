@@ -119,6 +119,23 @@ class LCCTest extends TestsLeaderboardValueBehavior
         $this->assertEquals(1, $userEntry['score']);
     }
 
+    // is_lcc_leaderboard_enabled flag
+
+    public function test_lcc_leaderboard_disabled_returns_422(): void
+    {
+        $this->markTestSkipped('is_lcc_leaderboard_enabled=false on format → GET leaderboard?value=lccs returns 422');
+    }
+
+    public function test_lcc_leaderboard_enabled_returns_200(): void
+    {
+        $this->markTestSkipped('is_lcc_leaderboard_enabled=true on format → GET leaderboard?value=lccs returns 200');
+    }
+
+    public function test_disabled_leaderboard_flag_on_nonexistent_format_returns_404(): void
+    {
+        $this->markTestSkipped('404 still wins over the leaderboard enabled flag check when format does not exist');
+    }
+
     // Two users, same map, only highest leftover counts per map
     public function test_two_users_same_map_only_highest_leftover_counts(): void
     {

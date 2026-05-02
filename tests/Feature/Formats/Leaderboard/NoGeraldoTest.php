@@ -51,6 +51,18 @@ class NoGeraldoTest extends TestsLeaderboardValueBehavior
         return 'no_geraldo';
     }
 
+    // is_no_geraldo_leaderboard_enabled flag
+
+    public function test_no_geraldo_leaderboard_disabled_returns_422(): void
+    {
+        $this->markTestSkipped('is_no_geraldo_leaderboard_enabled=false on format → GET leaderboard?value=no_geraldo returns 422');
+    }
+
+    public function test_no_geraldo_leaderboard_enabled_returns_200(): void
+    {
+        $this->markTestSkipped('is_no_geraldo_leaderboard_enabled=true on format → GET leaderboard?value=no_geraldo returns 200');
+    }
+
     // Custom test specific to no geraldo (multiple completions on same map)
     public function test_three_ng_completions_same_map_counted_once(): void
     {

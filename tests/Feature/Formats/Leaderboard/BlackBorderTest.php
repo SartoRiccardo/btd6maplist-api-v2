@@ -51,6 +51,18 @@ class BlackBorderTest extends TestsLeaderboardValueBehavior
         return 'black_border';
     }
 
+    // is_black_border_leaderboard_enabled flag
+
+    public function test_black_border_leaderboard_disabled_returns_422(): void
+    {
+        $this->markTestSkipped('is_black_border_leaderboard_enabled=false on format → GET leaderboard?value=black_border returns 422');
+    }
+
+    public function test_black_border_leaderboard_enabled_returns_200(): void
+    {
+        $this->markTestSkipped('is_black_border_leaderboard_enabled=true on format → GET leaderboard?value=black_border returns 200');
+    }
+
     // Custom test specific to black border (multiple completions on same map)
     public function test_three_bb_completions_same_map_counted_once(): void
     {
