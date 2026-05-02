@@ -221,6 +221,38 @@ class AchievementRoleController extends Controller
      *     @OA\Response(response=404, description="Not found")
      * )
      */
+    public function linkedRoleUpdates()
+    {
+        $rows = DB::select("
+            SELECT
+                COALESCE(slr.user_id, lr.user_id) AS user_id,
+                COALESCE(slr.guild_id, lr.guild_id) AS guild_id,
+                COALESCE(slr.role_id, lr.role_id) AS role_id,
+                slr.role_id IS NULL AS is_new
+            FROM snapshot_lb_linked_roles slr
+            FULL OUTER JOIN lb_linked_roles lr
+                ON slr.user_id = lr.user_id
+                AND slr.role_id = lr.role_id
+            WHERE slr.role_id IS NULL
+                OR lr.role_id IS NULL
+            ORDER BY guild_id, user_id
+        ");
+
+        return response()->json(array_map(fn($row) => [
+            'user_id' => (string) $row->user_id,
+            'guild_id' => (string) $row->guild_id,
+            'role_id' => (string) $row->role_id,
+            'is_new' => (bool) $row->is_new,
+        ], $rows));
+    }
+
+    public function refreshLinkedRoleSnapshot()
+    {
+        DB::statement('REFRESH MATERIALIZED VIEW snapshot_lb_linked_roles');
+
+        return response()->noContent();
+    }
+
     public function destroy($id)
     {
         $user = auth()->guard('discord')->user();

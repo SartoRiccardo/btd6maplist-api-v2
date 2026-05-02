@@ -1,35 +1,40 @@
 <?php
 
+use App\Http\Controllers\AchievementRoleController;
+use App\Http\Controllers\CompletionController;
+use App\Http\Controllers\MapSubmissionController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('maps')->middleware(['bot.signature', 'bot.user'])->group(function () {
-    Route::prefix('submit')->group(function () {
-        Route::post('/', [\App\Http\Controllers\MapSubmissionController::class, 'store']);
-        Route::post('/reject', [\App\Http\Controllers\MapSubmissionController::class, 'rejectByWebhook']);
+Route::prefix('maps')->middleware(['bot.signature', 'bot.user'])
+    ->controller(MapSubmissionController::class)
+    ->group(function () {
+        Route::prefix('submit')->group(function () {
+            Route::post('/', 'store');
+            Route::post('/reject', 'rejectByWebhook');
+        });
     });
-});
 
-Route::prefix('roles')->group(function () {
-    /**
-     * ❓ Unknown: Bot route
-     */
-    Route::get('/achievement/updates', fn() => response()->noContent(501));
+Route::prefix('roles')->middleware(['bot.signature'])
+    ->controller(AchievementRoleController::class)
+    ->group(function () {
+        Route::get('/achievement/updates', 'linkedRoleUpdates');
+        Route::post('/achievement/updates', 'refreshLinkedRoleSnapshot');
+    });
 
-    /**
-     * ❓ Unknown: Bot route
-     */
-    Route::post('/achievement/updates', fn() => response()->noContent(501));
-});
+Route::prefix('completions')->middleware(['bot.signature', 'bot.user'])
+    ->controller(CompletionController::class)
+    ->group(function () {
+        Route::post('submit', 'submitByBot');
+        Route::post('accept', 'accept');
+        Route::post('reject', 'reject');
+    });
 
-Route::prefix('completions')->middleware(['bot.signature', 'bot.user'])->group(function () {
-    Route::post('submit', [\App\Http\Controllers\CompletionController::class, 'submitByBot']);
-    Route::post('accept', [\App\Http\Controllers\CompletionController::class, 'accept']);
-    Route::post('reject', [\App\Http\Controllers\CompletionController::class, 'reject']);
-});
+Route::prefix('users')->middleware(['bot.signature', 'bot.user'])
+    ->controller(UserController::class)
+    ->group(function () {
+        Route::put('{uid}', 'updateOak');
+    });
 
-Route::prefix('users')->middleware(['bot.signature', 'bot.user'])->group(function () {
-    Route::put('{uid}', [\App\Http\Controllers\UserController::class, 'updateOak']);
-});
-
-Route::put('/read-rules', [\App\Http\Controllers\UserController::class, 'readRules'])
+Route::put('/read-rules', [UserController::class, 'readRules'])
     ->middleware(['bot.signature', 'bot.user']);
