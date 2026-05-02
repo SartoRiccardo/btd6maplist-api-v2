@@ -27,7 +27,10 @@ use Illuminate\Database\Eloquent\Model;
  *     @OA\Property(property="run_submission_status", type="string", enum={"closed", "open", "lcc_only"}, description="Run submission status", example="open"),
  *     @OA\Property(property="map_submission_status", type="string", enum={"closed", "open", "open_chimps"}, description="Map submission status", example="open_chimps"),
  *     @OA\Property(property="proposed_difficulties", type="array", nullable=true, description="List of proposed difficulty names", @OA\Items(type="string")),
- *     @OA\Property(property="is_no_geraldo_enabled", type="boolean", description="Whether No Geraldo runs are tracked for this format", example=true)
+ *     @OA\Property(property="is_no_geraldo_enabled", type="boolean", description="Whether No Geraldo runs are tracked for this format", example=true),
+ *     @OA\Property(property="is_lcc_leaderboard_enabled", type="boolean", description="Whether the LCC leaderboard is enabled for this format", example=true),
+ *     @OA\Property(property="is_black_border_leaderboard_enabled", type="boolean", description="Whether the Black Border leaderboard is enabled for this format", example=true),
+ *     @OA\Property(property="is_no_geraldo_leaderboard_enabled", type="boolean", description="Whether the No Geraldo leaderboard is enabled for this format", example=true)
  * )
  */
 class Format extends Model
@@ -65,6 +68,9 @@ class Format extends Model
         'emoji',
         'proposed_difficulties',
         'is_no_geraldo_enabled',
+        'is_lcc_leaderboard_enabled',
+        'is_black_border_leaderboard_enabled',
+        'is_no_geraldo_leaderboard_enabled',
     ];
 
     public $incrementing = false;
@@ -73,6 +79,9 @@ class Format extends Model
         'id' => 'integer',
         'hidden' => 'boolean',
         'is_no_geraldo_enabled' => 'boolean',
+        'is_lcc_leaderboard_enabled' => 'boolean',
+        'is_black_border_leaderboard_enabled' => 'boolean',
+        'is_no_geraldo_leaderboard_enabled' => 'boolean',
         'proposed_difficulties' => 'array',
         'run_submission_status' => RunSubmissionStatusCast::class,
         'map_submission_status' => MapSubmissionStatusCast::class,

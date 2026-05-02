@@ -127,7 +127,7 @@ class FormatController
         $validated = $request->validated();
 
         // Separate fields by permission
-        $configFields = ['name', 'map_submission_wh', 'run_submission_wh', 'hidden', 'run_submission_status', 'map_submission_status', 'emoji', 'proposed_difficulties', 'is_no_geraldo_enabled'];
+        $configFields = ['name', 'map_submission_wh', 'run_submission_wh', 'hidden', 'run_submission_status', 'map_submission_status', 'emoji', 'proposed_difficulties', 'is_no_geraldo_enabled', 'is_lcc_leaderboard_enabled', 'is_black_border_leaderboard_enabled', 'is_no_geraldo_leaderboard_enabled'];
         $presentationFields = ['slug', 'description', 'button_text', 'preview_map_1_code', 'preview_map_2_code', 'preview_map_3_code', 'map_submission_rules', 'completion_submission_rules', 'discord_server_url'];
 
         $configData = array_intersect_key($validated, array_flip($configFields));
@@ -184,6 +184,21 @@ class FormatController
         $leaderboardName = $request->getLeaderboardName((int) $id);
         if (!$leaderboardName) {
             return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $value = $request->validated()['value'] ?? 'points';
+        $leaderboardEnabledColumn = match ($value) {
+            'lccs' => 'is_lcc_leaderboard_enabled',
+            'black_border' => 'is_black_border_leaderboard_enabled',
+            'no_geraldo' => 'is_no_geraldo_leaderboard_enabled',
+            default => null,
+        };
+
+        if ($leaderboardEnabledColumn !== null) {
+            $format = Format::find((int) $id);
+            if (!$format || !$format->$leaderboardEnabledColumn) {
+                return response()->json(['message' => 'This leaderboard is not enabled for this format.'], 422);
+            }
         }
 
         $query = $request->buildLeaderboardQuery((int) $id);
