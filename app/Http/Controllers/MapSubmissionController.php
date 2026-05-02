@@ -271,6 +271,93 @@ class MapSubmissionController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/bot/maps/submit",
+     *     summary="Submit a map (bot)",
+     *     description="Creates a pending map submission on behalf of a Discord user. Same validation as the web endpoint. Use multipart/form-data.",
+     *     tags={"Bot", "Map Submissions"},
+     *     security={{"botAuth":{}}},
+     *     @OA\Parameter(name="X-Timestamp", in="header", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"_user", "code", "format_id", "proposed", "completion_proof"},
+     *                 @OA\Property(property="_user", ref="#/components/schemas/BotUser"),
+     *                 @OA\Property(property="code", type="string", maxLength=10, example="RiverMoen"),
+     *                 @OA\Property(property="format_id", type="integer", minimum=1, example=1),
+     *                 @OA\Property(property="proposed", type="integer", minimum=0, example=1),
+     *                 @OA\Property(property="subm_notes", type="string", nullable=true, maxLength=5000),
+     *                 @OA\Property(property="completion_proof", type="string", format="binary")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Submission created", @OA\JsonContent(@OA\Property(property="id", type="integer"))),
+     *     @OA\Response(response=401, description="Missing, expired, or invalid bot signature"),
+     *     @OA\Response(response=403, description="Forbidden - missing create:map_submission permission"),
+     *     @OA\Response(response=422, description="Validation error or invalid _user payload")
+     * )
+     *
+     * @OA\Post(
+     *     path="/bot/maps/submit/reject",
+     *     summary="Reject a map submission (bot)",
+     *     description="Rejects a pending map submission identified by its Discord webhook message ID. Requires edit:map_submission permission.",
+     *     tags={"Bot", "Map Submissions"},
+     *     security={{"botAuth":{}}},
+     *     @OA\Parameter(name="X-Timestamp", in="header", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *             required={"_user", "webhook_message_id"},
+     *             @OA\Property(property="_user", ref="#/components/schemas/BotUser"),
+     *             @OA\Property(property="webhook_message_id", type="string", example="1234567890123456789")
+     *         ))
+     *     ),
+     *     @OA\Response(response=204, description="Submission rejected"),
+     *     @OA\Response(response=401, description="Missing, expired, or invalid bot signature"),
+     *     @OA\Response(response=403, description="Forbidden - missing edit:map_submission permission"),
+     *     @OA\Response(response=404, description="Submission not found"),
+     *     @OA\Response(response=422, description="Submission already processed, or invalid payload")
+     * )
+     */
+    public function rejectByWebhook(Request $request): Response|JsonResponse
+    {
+        $whMsgId = $request->input('webhook_message_id');
+        if (!$whMsgId) {
+            return response()->json(['message' => 'Missing webhook_message_id.'], 422);
+        }
+
+        $user = auth()->guard('discord')->user();
+
+        $submission = MapSubmission::where('wh_msg_id', $whMsgId)->first();
+        if (!$submission) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $userFormatIds = $user->formatsWithPermission('edit:map_submission');
+        $hasGlobalPermission = in_array(null, $userFormatIds, true);
+        $hasFormatPermission = in_array($submission->format_id, $userFormatIds, true);
+
+        if (!$hasGlobalPermission && !$hasFormatPermission) {
+            return response()->json(['message' => 'Forbidden - You do not have permission to reject submissions for this format.'], 403);
+        }
+
+        if ($submission->rejected_by !== null || $submission->accepted_meta_id !== null) {
+            return response()->json(['message' => 'Cannot reject a submission that has already been processed.'], 422);
+        }
+
+        $submission->rejected_by = $user->discord_id;
+        $submission->save();
+
+        if ($submission->wh_msg_id) {
+            UpdateMapSubmissionWebhookJob::dispatch($submission->id, fail: true);
+        }
+
+        return response()->noContent();
+    }
+
+    /**
      * Reject the specified map submission.
      *
      * @OA\Put(

@@ -2,20 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Bot routes - NOT REGISTERED YET
-// These routes use bot-specific authentication/middleware
-
-Route::prefix('maps')->group(function () {
+Route::prefix('maps')->middleware(['bot.signature', 'bot.user'])->group(function () {
     Route::prefix('submit')->group(function () {
-        /**
-         * ❓ Unknown: Bot route
-         */
-        Route::post('/', fn() => response()->noContent(501));
-
-        /**
-         * ❓ Unknown: Bot route
-         */
-        Route::delete('/', fn() => response()->noContent(501));
+        Route::post('/', [\App\Http\Controllers\MapSubmissionController::class, 'store']);
+        Route::post('/reject', [\App\Http\Controllers\MapSubmissionController::class, 'rejectByWebhook']);
     });
 
     Route::prefix('{code}/completions')->group(function () {
