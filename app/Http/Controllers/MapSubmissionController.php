@@ -141,7 +141,7 @@ class MapSubmissionController extends Controller
             'subm_notes' => $data['subm_notes'] ?? null,
             'format_id' => $data['format_id'],
             'proposed' => $data['proposed'],
-            'completion_proof' => $path,
+            'completion_proof' => Storage::disk('public')->url($path),
             'created_on' => now(),
         ]);
 
@@ -260,8 +260,14 @@ class MapSubmissionController extends Controller
         }
 
         // Delete proof image
-        if ($submission->completion_proof && Storage::disk('public')->exists($submission->completion_proof)) {
-            Storage::disk('public')->delete($submission->completion_proof);
+        if ($submission->completion_proof) {
+            $baseUrl = Storage::disk('public')->url('');
+            $proofPath = str_starts_with($submission->completion_proof, $baseUrl)
+                ? substr($submission->completion_proof, strlen($baseUrl))
+                : $submission->completion_proof;
+            if (Storage::disk('public')->exists($proofPath)) {
+                Storage::disk('public')->delete($proofPath);
+            }
         }
 
         // Hard delete the submission
