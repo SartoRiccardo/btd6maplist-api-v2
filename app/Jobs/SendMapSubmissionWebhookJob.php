@@ -121,6 +121,11 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
             $embed['description'] = $submission->subm_notes;
         }
 
+        // Add proof image
+        if ($submission->completion_proof) {
+            $embed['image'] = ['url' => $submission->completion_proof];
+        }
+
         return $embed;
     }
 
@@ -132,7 +137,7 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
         return [
             'url' => "https://join.btd6.com/Map/{$code}",
             'image' => [
-                'url' => "https://data.ninjakiwi.com/btd6/maps/map/{$code}/preview",
+                'url' => "https://nkproxy.sarto.dev/map/{$code}.jpg",
             ],
         ];
     }
@@ -157,8 +162,7 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
         } else {
             // Default: Look up label from proposed_difficulties array, fallback to raw value
             $proposedDifficulties = $submission->format->proposed_difficulties ?? [];
-            $difficultyIndex = $submission->proposed - 1; // proposed is 1-indexed
-            $fieldValue = $proposedDifficulties[$difficultyIndex] ?? (string) $submission->proposed;
+            $fieldValue = $proposedDifficulties[$submission->proposed] ?? (string) $submission->proposed;
         }
 
         return [
