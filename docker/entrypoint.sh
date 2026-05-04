@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+touch /var/www/html/storage/logs/laravel.log
+
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
