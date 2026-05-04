@@ -34,8 +34,8 @@ class UserService
         $user->cached_avatar_url = $deco['avatar_url'];
         $user->cached_banner_url = $deco['banner_url'];
 
-        // Random expiry between 5-15 minutes (300-900 seconds)
-        $expirySeconds = rand(5 * 60, 15 * 60);
+        // Random expiry between 50-150 minutes (300-900 seconds)
+        $expirySeconds = rand(60 * 60, 3 * 60 * 60);
         $user->ninjakiwi_cache_expire = now()->addSeconds($expirySeconds);
 
         $user->save();
@@ -63,7 +63,7 @@ class UserService
 
         // Check if cache is expired or empty
         $needsRefresh = !$user->ninjakiwi_cache_expire ||
-                        !$user->ninjakiwi_cache_expire->isFuture();
+            !$user->ninjakiwi_cache_expire->isFuture();
 
         if ($needsRefresh) {
             // Dispatch background job to refresh
