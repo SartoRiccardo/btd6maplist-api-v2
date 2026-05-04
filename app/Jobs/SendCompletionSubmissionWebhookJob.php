@@ -112,7 +112,7 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
         if ($meta->lcc_id && $meta->lcc) {
             $lccData = $meta->lcc;
             if (is_array($lccData) && isset($lccData['leftover'])) {
-                $lccText = "\${$lccData['leftover']}";
+                $lccText = '$' . number_format((int) $lccData['leftover'], 0, ',', '.');
             }
         }
 
@@ -160,7 +160,7 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
         }
 
         $embed = [
-            'title' => "Run Submission: {$map->name} - {$map->code}",
+            'title' => $map->name,
             'color' => DiscordColors::PENDING,
             'fields' => $fields,
         ];
