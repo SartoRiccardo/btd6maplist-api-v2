@@ -21,6 +21,7 @@ RUN composer dump-autoload --optimize \
     && chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/php-custom.ini /usr/local/etc/php/conf.d/custom.ini
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
