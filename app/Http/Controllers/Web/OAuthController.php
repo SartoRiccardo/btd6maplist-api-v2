@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Laravel\Socialite\Facades\Socialite;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -108,6 +109,13 @@ class OAuthController extends Controller
                     'is_banned' => false,
                 ]
             );
+
+            if ($user->wasRecentlyCreated) {
+                $assignOnCreateRoleIds = Role::where('assign_on_create', true)->pluck('id');
+                if ($assignOnCreateRoleIds->isNotEmpty()) {
+                    $user->roles()->syncWithoutDetaching($assignOnCreateRoleIds);
+                }
+            }
 
             $token = $socialiteUser->token;
         } catch (\Exception $e) {
