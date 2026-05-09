@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-touch /var/www/html/storage/logs/laravel.log
+# Pipe Laravel logs to stdout so `docker logs` captures them
+ln -sf /proc/1/fd/1 /var/www/html/storage/logs/laravel.log
 
 php artisan config:cache
 php artisan route:cache
