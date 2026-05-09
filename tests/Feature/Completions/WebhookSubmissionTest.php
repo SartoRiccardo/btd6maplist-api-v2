@@ -120,4 +120,54 @@ class WebhookSubmissionTest extends TestCase
         $this->assertArrayHasKey('embeds', $payload);
         $this->assertCount(1, $payload['embeds']);
     }
+
+    #[Group('webhook')]
+    #[Group('completions')]
+    public function test_completion_job_with_three_images_produces_three_embeds(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->run_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        $response = $this->actingAs($user, 'discord')
+            ->postJson('/api/completions/submit', [
+                'map' => $map->code,
+                'format_id' => $format->id,
+                'players' => [$user->discord_id],
+                'proof_images' => $this->createProofImages(3),
+            ]);
+
+        $completionId = $response->json('id');
+        $completion = Completion::find($completionId);
+
+        $this->assertNotNull($completion, 'Completion should exist');
+        $this->assertNotNull($completion->wh_msg_id, 'wh_msg_id should be set');
+        $this->assertNotNull($completion->wh_data, 'wh_data should be set');
+
+        $payload = json_decode($completion->wh_data, true);
+        $this->assertIsArray($payload);
+        $this->assertArrayHasKey('embeds', $payload);
+
+        // Should have 3 embeds: 1 info embed + 2 additional image embeds
+        $this->assertCount(3, $payload['embeds'], 'Should have 3 embeds for 3 images');
+
+        // First embed should be the info embed
+        $infoEmbed = $payload['embeds'][0];
+        $this->assertArrayHasKey('title', $infoEmbed);
+        $this->assertArrayHasKey('fields', $infoEmbed);
+        $this->assertArrayHasKey('image', $infoEmbed, 'Info embed should contain first image');
+
+        // Second and third embeds should be image-only embeds
+        $imageEmbed1 = $payload['embeds'][1];
+        $this->assertArrayHasKey('image', $imageEmbed1, 'Second embed should be image embed');
+        $this->assertArrayNotHasKey('title', $imageEmbed1, 'Image embed should not have title');
+        $this->assertArrayNotHasKey('fields', $imageEmbed1, 'Image embed should not have fields');
+
+        $imageEmbed2 = $payload['embeds'][2];
+        $this->assertArrayHasKey('image', $imageEmbed2, 'Third embed should be image embed');
+        $this->assertArrayNotHasKey('title', $imageEmbed2, 'Image embed should not have title');
+        $this->assertArrayNotHasKey('fields', $imageEmbed2, 'Image embed should not have fields');
+    }
 }

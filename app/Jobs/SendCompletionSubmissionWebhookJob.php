@@ -64,10 +64,10 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
             return; // No webhook configured for this format
         }
 
-        // Build embed
-        $embed = $this->buildEmbed($completion, $meta);
+        // Build embeds
+        $embeds = $this->buildEmbeds($completion, $meta);
 
-        $payload = ['embeds' => [$embed]];
+        $payload = ['embeds' => $embeds];
 
         // Send webhook
         $messageId = $webhookClient->sendMapSubmissionWebhook($webhookUrl, $payload);
@@ -84,9 +84,38 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
     }
 
     /**
-     * Build the completion submission embed.
+     * Build multi-embed structure for completion submission.
+     *
+     * @return array<int, array>
      */
-    private function buildEmbed(Completion $completion, CompletionMeta $meta): array
+    private function buildEmbeds(Completion $completion, CompletionMeta $meta): array
+    {
+        $embeds = [];
+
+        // Build info embed (always first)
+        $embeds[] = $this->buildInfoEmbed($completion, $meta);
+
+        // Get all image proofs (skip the first one, already shown in info embed)
+        $imageProofs = $completion->proofs
+            ->where('proof_type', ProofType::IMAGE)
+            ->pluck('proof_url')
+            ->values()
+            ->skip(1) // Skip first image (already in info embed)
+            ->take(3) // Max 3 additional images
+            ->toArray();
+
+        // Build additional image embeds (up to 3 more)
+        foreach ($imageProofs as $imageUrl) {
+            $embeds[] = $this->buildImageEmbed($completion->map->code, $imageUrl);
+        }
+
+        return $embeds;
+    }
+
+    /**
+     * Build the primary info embed.
+     */
+    private function buildInfoEmbed(Completion $completion, CompletionMeta $meta): array
     {
         $map = $completion->map;
         $format = $meta->format;
@@ -135,6 +164,8 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
             $avatarUrl = $submitter->avatar_url;
         }
 
+        $frontendUrl = env('FRONTEND_URL');
+
         $fields = [
             [
                 'name' => 'Format',
@@ -161,6 +192,7 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
 
         $embed = [
             'title' => $map->name,
+            'url' => $frontendUrl ? "{$frontendUrl}/map/{$map->code}" : null,
             'color' => DiscordColors::PENDING,
             'fields' => $fields,
         ];
@@ -205,5 +237,20 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
         }
 
         return $embed;
+    }
+
+    /**
+     * Build an image embed.
+     */
+    private function buildImageEmbed(string $mapCode, string $imageUrl): array
+    {
+        $frontendUrl = env('FRONTEND_URL');
+
+        return [
+            'url' => $frontendUrl ? "{$frontendUrl}/maps/{$mapCode}" : null,
+            'image' => [
+                'url' => $imageUrl,
+            ],
+        ];
     }
 }
