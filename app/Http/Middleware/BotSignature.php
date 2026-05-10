@@ -31,6 +31,14 @@ class BotSignature
         $expected = hash_hmac('sha256', "{$timestamp}\n{$method}\n{$path}\n{$body}", $secret);
 
         if (!hash_equals($expected, $signature)) {
+            \Log::debug('BotSignature mismatch', [
+                'method'    => $method,
+                'path'      => $path,
+                'timestamp' => $timestamp,
+                'expected'  => $expected,
+                'received'  => $signature,
+                'body'      => $body,
+            ]);
             return response()->json(['error' => 'Invalid signature'], 401);
         }
 
@@ -44,9 +52,9 @@ class BotSignature
         }
 
         // php://input is unavailable for multipart/form-data (PHP consumes it at the SAPI level).
-        // Both sides agree on a canonical JSON: sorted non-file fields + SHA-256 of each file,
-        // grouped by field name alphabetically, preserving per-field submission order.
-        $fields = $request->except(array_keys($request->allFiles()));
+        // Both sides agree on a canonical JSON: field names kept as PHP bracket notation
+        // (e.g. _user[discord_id]), sorted alphabetically + SHA-256 of each file.
+        $fields = $this->flattenFields($request->except(array_keys($request->allFiles())));
         ksort($fields);
 
         $allFiles = $request->allFiles();
@@ -62,5 +70,19 @@ class BotSignature
             ['fields' => $fields, 'file_hashes' => $fileHashes],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         );
+    }
+
+    private function flattenFields(array $arr, string $prefix = ''): array
+    {
+        $result = [];
+        foreach ($arr as $key => $value) {
+            $fullKey = $prefix !== '' ? "{$prefix}[{$key}]" : (string) $key;
+            if (is_array($value)) {
+                $result += $this->flattenFields($value, $fullKey);
+            } else {
+                $result[$fullKey] = $value;
+            }
+        }
+        return $result;
     }
 }
