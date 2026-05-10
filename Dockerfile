@@ -22,6 +22,7 @@ RUN composer dump-autoload --optimize \
 
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/php-custom.ini /usr/local/etc/php/conf.d/custom.ini
+COPY docker/php-fpm-pool.conf /usr/local/etc/php-fpm.d/zz-logging.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
