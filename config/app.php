@@ -134,6 +134,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
-    'bot_secret' => env('BOT_SECRET', ''),
+    'bot_secret' => env('DISCORD_BOT_SECRET', ''),
 
 ];

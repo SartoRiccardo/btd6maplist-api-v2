@@ -53,7 +53,7 @@ class BotSignature
         ksort($allFiles);
         $fileHashes = [];
         foreach ($allFiles as $files) {
-            foreach ((array) $files as $file) {
+            foreach (is_array($files) ? $files : [$files] as $file) {
                 $fileHashes[] = hash_file('sha256', $file->getRealPath());
             }
         }
