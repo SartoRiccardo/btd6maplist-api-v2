@@ -59,7 +59,6 @@ class User extends Authenticatable
 
     protected $hidden = [
         'nk_oak',
-        'has_seen_popup',
         'pivot',
         'cached_avatar_url',
         'cached_banner_url',
