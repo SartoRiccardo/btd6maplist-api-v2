@@ -210,7 +210,7 @@ class UserController
         if ($includePermissions) {
             $response['permissions'] = collect($user->permissions)
                 ->groupBy('permission')
-                ->map(fn($perms) => $perms->pluck('format_id')->values())
+                ->map(fn($perms) => $perms->pluck('format_id')->unique()->values())
                 ->toArray();
         }
 

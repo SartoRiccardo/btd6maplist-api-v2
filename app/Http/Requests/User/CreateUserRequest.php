@@ -29,7 +29,7 @@ class CreateUserRequest extends BaseRequest
         $validator->after(function ($validator) {
             $data = $validator->getData();
 
-            if (isset($data['discord_id']) && User::find($data['discord_id'])) {
+            if (isset($data['discord_id']) && is_numeric($data['discord_id']) && User::find($data['discord_id'])) {
                 $validator->errors()->add('discord_id', 'A user with this Discord ID already exists.');
             }
 

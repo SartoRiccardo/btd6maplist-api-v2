@@ -196,7 +196,10 @@ class FormatController
 
         if ($leaderboardEnabledColumn !== null) {
             $format = Format::find((int) $id);
-            if (!$format || !$format->$leaderboardEnabledColumn) {
+            if (!$format) {
+                return response()->json(['message' => 'Not Found'], 404);
+            }
+            if (!$format->$leaderboardEnabledColumn) {
                 return response()->json(['message' => 'This leaderboard is not enabled for this format.'], 422);
             }
         }
