@@ -12,7 +12,7 @@ class FormatSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    private static array $formats = [
+    protected static array $formats = [
         FormatConstants::MAPLIST => [
             'name' => 'The Maplist',
             'slug' => 'maplist',
@@ -77,7 +77,7 @@ class FormatSeeder extends Seeder
         ],
     ];
 
-    private static array $previewMaps = [
+    protected static array $previewMaps = [
         'ZFKTKEH', 'ZFFGKFH', 'ZFFEETW',
         'ZFFBGCC', 'ZMOFEYB', 'ZFFTBHX',
         'ZFKOPFD', 'ZFFBOHD', 'ZFFCUCU',

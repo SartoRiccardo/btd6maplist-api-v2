@@ -17,6 +17,7 @@ class DevSeeder extends Seeder
         \DB::transaction(function () {
             $this->call([
                 \Database\Seeders\DatabaseSeeder::class,
+                \Database\Seeders\Dev\FormatSeeder::class,
                 // Users
                 \Database\Seeders\Dev\UserSeeder::class,
                 \Database\Seeders\Dev\UserRoleSeeder::class,
