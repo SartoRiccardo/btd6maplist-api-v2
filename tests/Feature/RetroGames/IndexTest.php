@@ -3,10 +3,18 @@
 namespace Tests\Feature\RetroGames;
 
 use App\Models\RetroGame;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class IndexTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        DB::table('retro_maps')->delete();
+        DB::table('retro_games')->delete();
+    }
+
     #[Group('get')]
     #[Group('retro-games')]
     public function test_index_returns_standard_paginated_structure(): void
@@ -42,17 +50,17 @@ class IndexTest extends TestCase
     public function test_index_has_correct_record_structure(): void
     {
         $game = RetroGame::factory()->create([
-            'game_id' => 6048,
+            'game_id' => 99999,
             'game_name' => 'Test Game',
             'category_name' => 'Test Category',
             'subcategory_name' => 'Test Subcategory',
         ]);
 
-        $actual = $this->getJson('/api/retro-games')->assertStatus(200)->json()['data'][0];
+        $actual = $this->getJson('/api/retro-games')->assertStatus(200)->json();
+        $this->assertCount(1, $actual['data']);
 
         $expected = RetroGame::jsonStructure([...$game->toArray()]);
-
-        $this->assertEquals($expected, $actual);
+        $this->assertEquals($expected, $actual['data'][0]);
     }
 
     #[Group('get')]

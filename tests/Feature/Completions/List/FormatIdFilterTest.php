@@ -19,7 +19,7 @@ class FormatIdFilterTest extends TestCase
     {
         $this->getJson('/api/completions?format_id=999999')
             ->assertStatus(422)
-            ->assertJsonValidationErrors('format_id');
+            ->assertJsonValidationErrors('format_id.0');
     }
 
     #[Group('get')]

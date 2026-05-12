@@ -109,9 +109,9 @@ class SendMapSubmissionWebhookJobTest extends TestCase
         $job = new SendMapSubmissionWebhookJob($submission->id);
         $job->handle(app(DiscordWebhookClient::class));
 
-        // Should not throw, webhook should not be sent
+        // Map not existing in DB is valid — submission is sent anyway
         $submission->refresh();
-        $this->assertNull($submission->wh_msg_id);
+        $this->assertNotNull($submission->wh_msg_id);
     }
 
     public function test_job_builds_correct_payload_structure(): void
@@ -126,8 +126,10 @@ class SendMapSubmissionWebhookJobTest extends TestCase
             'format_id' => $format->id,
             'proposed' => 1,
             'subm_notes' => 'Test notes for submission',
+            'completion_proof' => null,
         ]);
 
+        NinjaKiwiApiClient::fakeMapName([$this->map->code => $this->map->name]);
         DiscordWebhookClient::fake(true);
 
         $job = new SendMapSubmissionWebhookJob($submission->id);
@@ -146,13 +148,13 @@ class SendMapSubmissionWebhookJobTest extends TestCase
                     'description' => 'Test notes for submission',
                     'fields' => [[
                         'name' => 'Proposed Placement',
-                        'value' => 'Top 3',
+                        'value' => 'Top 10',
                         'inline' => true,
                     ]],
                 ],
                 [
                     'url' => "https://join.btd6.com/Map/{$this->map->code}",
-                    'image' => ['url' => $this->map->map_preview_url],
+                    'image' => ['url' => "https://nkproxy.sarto.dev/map/{$this->map->code}.jpg"],
                 ],
             ],
         ];
@@ -184,7 +186,7 @@ class SendMapSubmissionWebhookJobTest extends TestCase
         $this->assertArrayHasKey('fields', $payload['embeds'][0]);
         $field = $payload['embeds'][0]['fields'][0];
         $this->assertEquals('Proposed Placement', $field['name']);
-        $this->assertEquals('Top 3', $field['value']); // MAPLIST has proposed_difficulties set, so it looks up the label
+        $this->assertEquals('Top 10', $field['value']); // proposed=1 → index 1 in proposed_difficulties
     }
 
     public function test_job_handles_expert_list_proposed_label(): void
@@ -198,7 +200,7 @@ class SendMapSubmissionWebhookJobTest extends TestCase
             'code' => $this->map->code,
             'submitter_id' => $this->submitter->discord_id,
             'format_id' => $format->id,
-            'proposed' => 2, // Intermediate (1-indexed)
+            'proposed' => 1, // Intermediate (0-indexed)
         ]);
 
         DiscordWebhookClient::fake(true);

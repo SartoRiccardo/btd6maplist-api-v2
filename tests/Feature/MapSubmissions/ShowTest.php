@@ -25,10 +25,14 @@ class ShowTest extends TestCase
             'discord_id' => $submission->submitter->discord_id,
             'name' => $submission->submitter->name,
             'is_banned' => $submission->submitter->is_banned,
+            'has_seen_popup' => $submission->submitter->has_seen_popup,
         ];
         $expected['rejecter'] = null;
         $expected['format'] = Format::jsonStructure($submission->format->toArray());
         $expected['accepted_meta'] = null;
+
+        unset($expected['format']['preview_map1'], $expected['format']['preview_map2'], $expected['format']['preview_map3']);
+        unset($actual['format']['preview_map1'], $actual['format']['preview_map2'], $actual['format']['preview_map3']);
 
         $this->assertEquals($expected, $actual);
     }

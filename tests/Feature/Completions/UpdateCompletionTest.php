@@ -72,7 +72,7 @@ class UpdateCompletionTest extends TestCase
             'black_border' => false,
             'no_geraldo' => false,
             'accepted_by_id' => $acceptor?->discord_id,
-            'created_on' => $createdOn ?? Carbon::now(),
+            'created_on' => $createdOn ?? Carbon::now()->subSeconds(2),
         ]);
 
         $player ??= User::factory()->create();

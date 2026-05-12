@@ -1154,15 +1154,15 @@ class StoreMapTest extends TestCase
             // No meta fields provided
         ];
 
-        $this->actingAs($user, 'discord')
+        $response = $this->actingAs($user, 'discord')
             ->postJson('/api/maps', $payload)
             ->assertStatus(422)
-            ->assertJson([
-                'message' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
-                'errors' => [
-                    'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
-                ],
-            ]);
+            ->json();
+
+        foreach (['placement_curver', 'placement_allver', 'difficulty', 'botb_difficulty', 'remake_of'] as $field) {
+            $this->assertArrayHasKey($field, $response['errors']);
+            $this->assertEquals('At least one of these must be set', $response['errors'][$field][0]);
+        }
     }
 
     #[Group('store')]
@@ -1215,14 +1215,14 @@ class StoreMapTest extends TestCase
             'placement_curver' => 1, // User doesn't have MAPLIST permission
         ];
 
-        $this->actingAs($user, 'discord')
+        $response = $this->actingAs($user, 'discord')
             ->postJson('/api/maps', $payload)
             ->assertStatus(422)
-            ->assertJson([
-                'message' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
-                'errors' => [
-                    'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
-                ],
-            ]);
+            ->json();
+
+        foreach (['placement_curver', 'placement_allver', 'difficulty', 'botb_difficulty', 'remake_of'] as $field) {
+            $this->assertArrayHasKey($field, $response['errors']);
+            $this->assertEquals('At least one of these must be set', $response['errors'][$field][0]);
+        }
     }
 }

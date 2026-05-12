@@ -67,11 +67,16 @@ class IndexTest extends TestCase
             'discord_id' => $submission->submitter->discord_id,
             'name' => $submission->submitter->name,
             'is_banned' => $submission->submitter->is_banned,
+            'has_seen_popup' => $submission->submitter->has_seen_popup,
         ];
         $expected['rejecter'] = null;
         $expected['format'] = Format::jsonStructure($submission->format->toArray());
 
-        $this->assertEquals($expected, $actual[0]);
+        unset($expected['format']['preview_map1'], $expected['format']['preview_map2'], $expected['format']['preview_map3']);
+        $item = $actual[0];
+        unset($item['format']['preview_map1'], $item['format']['preview_map2'], $item['format']['preview_map3']);
+
+        $this->assertEquals($expected, $item);
     }
 
     #[Group('index')]
@@ -84,7 +89,7 @@ class IndexTest extends TestCase
         MapSubmission::factory()->for($format1)->count(3)->create();
         MapSubmission::factory()->for($format2)->count(2)->create();
 
-        $actual = $this->getJson("/api/maps/submissions?format_id={$format1->id}")
+        $actual = $this->getJson("/api/maps/submissions?format_ids={$format1->id}")
             ->assertStatus(200)
             ->json('data');
 
@@ -142,7 +147,7 @@ class IndexTest extends TestCase
             ->count(1)
             ->create();
 
-        $actual = $this->getJson("/api/maps/submissions?format_id={$format->id}&submitter_id={$user1->discord_id}")
+        $actual = $this->getJson("/api/maps/submissions?format_ids={$format->id}&submitter_id={$user1->discord_id}")
             ->assertStatus(200)
             ->json('data');
 

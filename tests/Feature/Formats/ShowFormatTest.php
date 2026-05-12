@@ -30,13 +30,15 @@ class ShowFormatTest extends TestCase
             ->assertStatus(200)
             ->json();
 
-        $expected = Format::jsonStructure($format->toArray());
+        $expected = Format::jsonStructure(
+            Format::with(['previewMap1', 'previewMap2', 'previewMap3'])->find($format->id)->toArray()
+        );
         $this->assertEquals($expected, $actual);
 
         // Explicitly verify webhook fields are NOT present
         $this->assertArrayNotHasKey('map_submission_wh', $actual);
         $this->assertArrayNotHasKey('run_submission_wh', $actual);
-        $this->assertArrayNotHasKey('emoji', $actual);
+        $this->assertArrayHasKey('emoji', $actual);
     }
 
     #[Group('get')]
@@ -64,7 +66,7 @@ class ShowFormatTest extends TestCase
             ->assertStatus(200)
             ->json();
 
-        $expected = $format->toFullArray();
+        $expected = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])->find($format->id)->toFullArray();
         $this->assertEquals($expected, $actual);
     }
 
@@ -147,7 +149,7 @@ class ShowFormatTest extends TestCase
             ->assertStatus(200)
             ->json();
 
-        $expected = $format->toFullArray();
+        $expected = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])->find($format->id)->toFullArray();
         $this->assertEquals($expected, $actual);
     }
 }

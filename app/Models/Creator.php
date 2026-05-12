@@ -70,8 +70,6 @@ class Creator extends Pivot
             'user_id',
             'role',
             'user',
-            'avatar_url',
-            'banner_url',
         ];
     }
 }

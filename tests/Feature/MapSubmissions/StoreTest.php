@@ -482,6 +482,10 @@ class StoreTest extends TestCase
             ->json();
 
         $this->assertNotNull($actual['completion_proof']);
-        Storage::disk('public')->assertExists($actual['completion_proof']);
+        $baseUrl = Storage::disk('public')->url('');
+        $storagePath = str_starts_with($actual['completion_proof'], $baseUrl)
+            ? substr($actual['completion_proof'], strlen($baseUrl))
+            : $actual['completion_proof'];
+        Storage::disk('public')->assertExists($storagePath);
     }
 }

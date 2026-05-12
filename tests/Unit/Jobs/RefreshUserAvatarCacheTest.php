@@ -94,8 +94,8 @@ class RefreshUserAvatarCacheTest extends TestCase
 
         $this->assertNotNull($user->ninjakiwi_cache_expire);
 
-        $minExpiry = now()->addMinutes(5);
-        $maxExpiry = now()->addMinutes(15);
+        $minExpiry = now()->addHours(1);
+        $maxExpiry = now()->addHours(3);
 
         $this->assertTrue($user->ninjakiwi_cache_expire->gte($minExpiry));
         $this->assertTrue($user->ninjakiwi_cache_expire->lte($maxExpiry));
@@ -134,9 +134,9 @@ class RefreshUserAvatarCacheTest extends TestCase
             $expiries[] = $user->ninjakiwi_cache_expire->timestamp;
         }
 
-        // All expiries should be between 5-15 minutes from now
-        $minTimestamp = now()->addMinutes(5)->timestamp;
-        $maxTimestamp = now()->addMinutes(15)->timestamp;
+        // All expiries should be between 1-3 hours from now
+        $minTimestamp = now()->addHours(1)->timestamp;
+        $maxTimestamp = now()->addHours(3)->timestamp;
 
         foreach ($expiries as $expiry) {
             $this->assertGreaterThanOrEqual($minTimestamp, $expiry);

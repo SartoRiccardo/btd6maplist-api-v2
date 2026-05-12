@@ -50,8 +50,11 @@ class CallbackTest extends TestCase
 
         $driverMock->shouldReceive('setScopes')->andReturn($driverMock);
         $driverMock->shouldReceive('scopes')->andReturn($driverMock);
-        $driverMock->shouldReceive('withState')->with(Mockery::on(function ($state) use (&$capturedState) {
-            $capturedState = $state;
+        $driverMock->shouldReceive('withState')->andReturn($driverMock);
+        $driverMock->shouldReceive('with')->with(Mockery::on(function ($params) use (&$capturedState) {
+            if (isset($params['state'])) {
+                $capturedState = $params['state'];
+            }
             return true;
         }))->andReturn($driverMock);
         $driverMock->shouldReceive('redirect')->andReturn($redirectResponse);

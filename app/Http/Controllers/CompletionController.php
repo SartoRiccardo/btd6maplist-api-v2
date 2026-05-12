@@ -254,7 +254,9 @@ class CompletionController
             'include' => 'nullable|string',
         ]);
 
-        $timestamp = Carbon::createFromTimestamp($validated['timestamp'] ?? Carbon::now()->unix());
+        $timestamp = isset($validated['timestamp'])
+            ? Carbon::createFromTimestamp($validated['timestamp'])
+            : Carbon::now();
         $include = array_filter(explode(',', $validated['include'] ?? ''));
         $includeMapMetadata = in_array('map.metadata', $include);
         $includePlayersFlair = in_array('players.flair', $include);

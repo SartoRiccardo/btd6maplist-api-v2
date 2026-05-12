@@ -6,6 +6,7 @@ use App\Constants\FormatConstants;
 use App\Models\AchievementRole;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
+use App\Models\Format;
 use App\Models\Map;
 use App\Models\User;
 use Tests\TestCase;
@@ -215,6 +216,9 @@ class AchievementRolesTest extends TestCase
     #[Group('achievement_roles')]
     public function test_user_with_multiple_lb_types_gets_one_role_per_type(): void
     {
+        // Enable no_geraldo on the MAPLIST format (disabled by default)
+        Format::where('id', FormatConstants::MAPLIST)->update(['is_no_geraldo_enabled' => true]);
+
         // MAPLIST black_border roles
         $bbRole = AchievementRole::factory()->create([
             'lb_format' => FormatConstants::MAPLIST,
@@ -233,11 +237,20 @@ class AchievementRolesTest extends TestCase
 
         $user = User::factory()->create();
 
-        // Create 10 BB completions on different maps
+        // Create 10 BB completions on different maps (MAPLIST format)
         $this->createUserWithBlackBorderCount(10, $user);
 
-        // Create 5 NG completions on DIFFERENT maps (not same as BB)
-        $this->createUserWithNoGeraldoCount(5, $user);
+        // Create 5 NG completions on different maps in MAPLIST format
+        $ngMaps = Map::factory()->withMeta(['placement_curver' => 1])->count(5)->create();
+        $ngCompletions = Completion::factory()->count(5)
+            ->sequence(fn($seq) => ['map_code' => $ngMaps[$seq->index]->code])
+            ->create();
+        CompletionMeta::factory()->count(5)
+            ->sequence(fn($seq) => ['completion_id' => $ngCompletions[$seq->index]->id])
+            ->state(['format_id' => FormatConstants::MAPLIST, 'black_border' => false, 'no_geraldo' => true, 'lcc_id' => null])
+            ->accepted()
+            ->withPlayers([$user])
+            ->create();
 
         $actual = $this->getJson("/api/users/{$user->discord_id}?include=achievement_roles")
             ->assertStatus(200)

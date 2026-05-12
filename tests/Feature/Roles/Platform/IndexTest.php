@@ -17,29 +17,28 @@ class IndexTest extends TestCase
         Role::query()->delete();
         DB::table('role_grants')->truncate();
 
-        // Create some roles to be used as grantable targets
         $grantableRole1 = Role::factory()->create();
         $grantableRole2 = Role::factory()->create();
 
-        // Create platform roles with can_grant relationships
-        $platformRole1 = Role::factory()->internal()->canGrant([$grantableRole1->id, $grantableRole2->id])->create();
-        $platformRole2 = Role::factory()->internal()->canGrant([$grantableRole1->id])->create();
-        $platformRole3 = Role::factory()->internal()->create();
+        $internalRole1 = Role::factory()->internal()->canGrant([$grantableRole1->id, $grantableRole2->id])->create();
+        $internalRole2 = Role::factory()->internal()->canGrant([$grantableRole1->id])->create();
+        $internalRole3 = Role::factory()->internal()->create();
+        $nonInternalRole = Role::factory()->create();
 
-        // Create non-platform roles - should NOT appear in results
-        Role::factory()->count(2)->create();
-
-        $platformRole1->load('canGrant');
-        $platformRole2->load('canGrant');
-        $platformRole3->load('canGrant');
+        $internalRole1->load('canGrant');
+        $internalRole2->load('canGrant');
+        $internalRole3->load('canGrant');
+        $grantableRole1->load('canGrant');
+        $grantableRole2->load('canGrant');
+        $nonInternalRole->load('canGrant');
 
         $actual = $this->getJson('/api/roles/platform')
             ->assertStatus(200)
             ->json();
 
-        $expected = RoleTestHelper::expectedPlatformRoleList(
-            collect([$platformRole1, $platformRole2, $platformRole3])->sortBy('id')->values()
-        );
+        $allRoles = collect([$grantableRole1, $grantableRole2, $internalRole1, $internalRole2, $internalRole3, $nonInternalRole])
+            ->sortBy('id')->values();
+        $expected = RoleTestHelper::expectedPlatformRoleList($allRoles);
 
         $this->assertEquals($expected, $actual);
     }
@@ -51,8 +50,6 @@ class IndexTest extends TestCase
     {
         Role::query()->delete();
         DB::table('role_grants')->truncate();
-
-        Role::factory()->count(3)->create();
 
         $actual = $this->getJson('/api/roles/platform')
             ->assertStatus(200)

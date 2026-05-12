@@ -49,7 +49,7 @@ class UpdateMapTest extends TestCase
 
         // Create a map to update for each test
         $this->testMap = Map::factory()->create(['code' => 'TESTCODE', 'name' => 'Original Test Map']);
-        $this->testMeta = MapListMeta::factory()->for($this->testMap)->create();
+        $this->testMeta = MapListMeta::factory()->for($this->testMap)->create(['placement_curver' => 1]);
     }
 
     #[Group('update')]
@@ -1438,15 +1438,15 @@ class UpdateMapTest extends TestCase
             'placement_curver' => null, // Clear the only meta field
         ];
 
-        $this->actingAs($user, 'discord')
+        $response = $this->actingAs($user, 'discord')
             ->putJson('/api/maps/TESTCODE', $payload)
             ->assertStatus(422)
-            ->assertJson([
-                'message' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
-                'errors' => [
-                    'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
-                ],
-            ]);
+            ->json();
+
+        foreach (['placement_curver', 'placement_allver', 'difficulty', 'botb_difficulty', 'remake_of'] as $field) {
+            $this->assertArrayHasKey($field, $response['errors']);
+            $this->assertEquals('At least one of these must be set', $response['errors'][$field][0]);
+        }
     }
 
     #[Group('update')]
@@ -1543,15 +1543,15 @@ class UpdateMapTest extends TestCase
             'placement_curver' => 1, // Try to set a field user doesn't have permission for
         ];
 
-        $this->actingAs($user, 'discord')
+        $response = $this->actingAs($user, 'discord')
             ->putJson('/api/maps/TESTCODE', $payload)
             ->assertStatus(422)
-            ->assertJson([
-                'message' => 'At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of',
-                'errors' => [
-                    'meta_fields' => ['At least one of the following fields must be provided: placement_curver, placement_allver, difficulty, botb_difficulty, remake_of'],
-                ],
-            ]);
+            ->json();
+
+        foreach (['placement_curver', 'placement_allver', 'difficulty', 'botb_difficulty', 'remake_of'] as $field) {
+            $this->assertArrayHasKey($field, $response['errors']);
+            $this->assertEquals('At least one of these must be set', $response['errors'][$field][0]);
+        }
     }
 
     #[Group('update')]

@@ -66,15 +66,8 @@ class UpdateFormatTest extends TestCase
     {
         $user = $this->createUserWithPermissions([]);
 
-        $payload = [
-            'name' => 'Updated Name',
-            'hidden' => true,
-            'run_submission_status' => 'open',
-            'map_submission_status' => 'open',
-        ];
-
         $this->actingAs($user, 'discord')
-            ->putJson("/api/formats/{$this->testFormat->id}", $payload)
+            ->putJson("/api/formats/{$this->testFormat->id}", $this->requestData())
             ->assertStatus(403)
             ->assertJson(['message' => 'Forbidden - Missing edit:config permission for this format.']);
     }
@@ -109,17 +102,17 @@ class UpdateFormatTest extends TestCase
             ->putJson("/api/formats/{$this->testFormat->id}", $payload)
             ->assertStatus(204);
 
-        // Verify the update via GET
+        // Verify via GET — both that the response is correct and that the PUT actually saved
         $actual = $this->getJson("/api/formats/{$this->testFormat->id}")
             ->assertStatus(200)
             ->json();
 
-        $expected = Format::jsonStructure([
-            'id' => $this->testFormat->id,
-            ...$payload,
-            'proposed_difficulties' => $this->testFormat->proposed_difficulties,
-        ]);
-        $this->assertEquals($expected, $actual);
+        $format = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])->find($this->testFormat->id);
+        $this->assertEquals('Updated Name', $format->name);
+        $this->assertTrue($format->hidden);
+        $this->assertEquals('open', $format->run_submission_status);
+        $this->assertEquals('open', $format->map_submission_status);
+        $this->assertEquals(Format::jsonStructure($format->toArray()), $actual);
     }
 
     #[Group('put')]
@@ -143,17 +136,17 @@ class UpdateFormatTest extends TestCase
             ->putJson("/api/formats/{$this->testFormat->id}", $payload)
             ->assertStatus(204);
 
-        // Verify the update via GET with include=webhooks
+        // Verify via GET with include=webhooks — both that the response is correct and the PUT actually saved
         $actual = $this->actingAs($user, 'discord')
             ->getJson("/api/formats/{$this->testFormat->id}?include=webhooks")
             ->assertStatus(200)
             ->json();
 
-        $expected = Format::jsonStructure([
-            'id' => $this->testFormat->id,
-            ...$payload,
-        ]);
-        $this->assertEquals($expected, $actual);
+        $format = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])->find($this->testFormat->id);
+        $this->assertEquals('Completely Updated Name', $format->name);
+        $this->assertEquals('🚀', $format->emoji);
+        $this->assertEquals(['Top 3', 'Top 10', '#11 ~ 20'], $format->proposed_difficulties);
+        $this->assertEquals($format->toFullArray(), $actual);
     }
 
     #[Group('put')]
@@ -240,17 +233,15 @@ class UpdateFormatTest extends TestCase
             ->putJson("/api/formats/{$this->testFormat->id}", $payload)
             ->assertStatus(204);
 
-        // Verify the update via GET
+        // Verify via GET — both that the response is correct and the PUT actually saved
         $actual = $this->getJson("/api/formats/{$this->testFormat->id}")
             ->assertStatus(200)
             ->json();
 
-        $expected = Format::jsonStructure([
-            'id' => $this->testFormat->id,
-            ...$payload,
-            'proposed_difficulties' => $this->testFormat->proposed_difficulties,
-        ]);
-        $this->assertEquals($expected, $actual);
+        $format = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])->find($this->testFormat->id);
+        $this->assertEquals('Updated via Global Permission', $format->name);
+        $this->assertTrue($format->hidden);
+        $this->assertEquals(Format::jsonStructure($format->toArray()), $actual);
     }
 
     #[Group('put')]
@@ -274,17 +265,17 @@ class UpdateFormatTest extends TestCase
             ->putJson("/api/formats/{$this->testFormat->id}", $payload)
             ->assertStatus(204);
 
-        // Verify nullable fields are null via GET with include=webhooks
+        // Verify via GET with include=webhooks — both that nulls were saved and full structure matches
         $actual = $this->actingAs($user, 'discord')
             ->getJson("/api/formats/{$this->testFormat->id}?include=webhooks")
             ->assertStatus(200)
             ->json();
 
-        $expected = Format::jsonStructure([
-            'id' => $this->testFormat->id,
-            ...$payload,
-        ]);
-        $this->assertEquals($expected, $actual);
+        $format = Format::with(['previewMap1', 'previewMap2', 'previewMap3'])->find($this->testFormat->id);
+        $this->assertNull($format->map_submission_wh);
+        $this->assertNull($format->emoji);
+        $this->assertNull($format->proposed_difficulties);
+        $this->assertEquals($format->toFullArray(), $actual);
     }
 
     // -- Presentation field permission tests -- //

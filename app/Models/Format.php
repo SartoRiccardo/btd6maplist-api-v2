@@ -147,6 +147,14 @@ class Format extends Model
             'run_submission_status' => $data['run_submission_status'] ?? 'closed',
             'map_submission_status' => $data['map_submission_status'] ?? 'closed',
             'proposed_difficulties' => $data['proposed_difficulties'] ?? null,
+            'emoji' => $data['emoji'] ?? null,
+            'is_no_geraldo_enabled' => false,
+            'is_lcc_leaderboard_enabled' => true,
+            'is_black_border_leaderboard_enabled' => true,
+            'is_no_geraldo_leaderboard_enabled' => true,
+            'preview_map1' => null,
+            'preview_map2' => null,
+            'preview_map3' => null,
         ];
     }
 
@@ -168,6 +176,13 @@ class Format extends Model
             'map_submission_wh',
             'run_submission_wh',
             'emoji',
+            'is_no_geraldo_enabled',
+            'is_lcc_leaderboard_enabled',
+            'is_black_border_leaderboard_enabled',
+            'is_no_geraldo_leaderboard_enabled',
+            'preview_map1',
+            'preview_map2',
+            'preview_map3',
         ];
     }
 }

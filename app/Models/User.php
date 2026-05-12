@@ -262,6 +262,7 @@ class User extends Authenticatable
         return [
             'discord_id' => isset($overrides['discord_id']) ? (string) $overrides['discord_id'] : '123456789012345678',
             'name' => 'TestUser',
+            'has_seen_popup' => false,
             'is_banned' => false,
             'roles' => [],
         ];
@@ -275,6 +276,7 @@ class User extends Authenticatable
         return [
             'discord_id',
             'name',
+            'has_seen_popup',
             'is_banned',
             'avatar_url',
             'banner_url',

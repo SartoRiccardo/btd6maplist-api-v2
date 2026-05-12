@@ -5,8 +5,8 @@ namespace Tests\Feature\Users;
 use App\Models\User;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
 use Illuminate\Support\Facades\Http;
-use Tests\Traits\TestsDiscordAuthMiddleware;
 use Tests\TestCase;
+use Tests\Traits\TestsDiscordAuthMiddleware;
 
 class UpdateUserTest extends TestCase
 {
@@ -28,6 +28,23 @@ class UpdateUserTest extends TestCase
             'name' => 'UpdatedName',
             'nk_oak' => null,
         ];
+    }
+
+    // The update endpoint changes the user's name, so the auth middleware trait's
+    // generic assertion that the Discord username was saved doesn't apply here.
+    public function test_valid_token_creates_user(): void
+    {
+        $this->setupDiscordFakes();
+
+        $this->makeRequest(self::FAKE_TOKEN);
+
+        $this->assertDatabaseHas('users', [
+            'discord_id' => self::USER_ID,
+        ]);
+
+        $userCountBefore = User::count();
+        $this->makeRequest(self::FAKE_TOKEN);
+        $this->assertEquals($userCountBefore, User::count());
     }
 
     // ========== AUTHORIZATION TESTS ==========

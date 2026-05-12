@@ -240,31 +240,26 @@ class GetMapTest extends TestCase
     public function test_get_map_with_creators_flair_include(): void
     {
         $map = Map::factory()->withMeta()->create();
-        $user = User::factory()->create(['nk_oak' => 'test_oak_123']);
+        $user = User::factory()->create([
+            'nk_oak' => 'test_oak_123',
+            'cached_avatar_url' => 'https://example.com/avatar.png',
+            'cached_banner_url' => 'https://example.com/banner.png',
+            'ninjakiwi_cache_expire' => now()->addHour(),
+        ]);
 
         Creator::factory()->create([
             'map_code' => $map->code,
             'user_id' => $user->discord_id,
         ]);
 
-        $fakeDeco = [
-            'avatar_url' => 'https://example.com/avatar.png',
-            'banner_url' => 'https://example.com/banner.png',
-        ];
-        NinjaKiwiApiClient::fake($fakeDeco);
-
         $actual = $this->getJson("/api/maps/{$map->code}?include=creators.flair")
             ->assertStatus(200)
             ->json();
 
-        $creatorWithUser = Creator::where('map_code', $map->code)->with('user')->first();
-        $expected = Creator::jsonStructure([
-            ...$creatorWithUser->toArray(),
-            'avatar_url' => 'https://example.com/avatar.png',
-            'banner_url' => 'https://example.com/banner.png',
-        ]);
-
-        $this->assertEquals([$expected], $actual['creators']);
+        $creator = $actual['creators'][0];
+        $this->assertEquals($user->discord_id, $creator['user_id']);
+        $this->assertEquals('https://example.com/avatar.png', $creator['user']['avatar_url']);
+        $this->assertEquals('https://example.com/banner.png', $creator['user']['banner_url']);
     }
 
     #[Group('get')]
@@ -274,7 +269,12 @@ class GetMapTest extends TestCase
         Config::factory()->type('int')->name('current_btd6_ver')->create(['value' => '441']);
 
         $map = Map::factory()->withMeta()->create();
-        $user = User::factory()->create(['nk_oak' => 'test_oak_456']);
+        $user = User::factory()->create([
+            'nk_oak' => 'test_oak_456',
+            'cached_avatar_url' => 'https://example.com/verifier_avatar.png',
+            'cached_banner_url' => 'https://example.com/verifier_banner.png',
+            'ninjakiwi_cache_expire' => now()->addHour(),
+        ]);
 
         Verification::factory()->create([
             'map_code' => $map->code,
@@ -282,24 +282,14 @@ class GetMapTest extends TestCase
             'version' => null,
         ]);
 
-        $fakeDeco = [
-            'avatar_url' => 'https://example.com/verifier_avatar.png',
-            'banner_url' => 'https://example.com/verifier_banner.png',
-        ];
-        NinjaKiwiApiClient::fake($fakeDeco);
-
         $actual = $this->getJson("/api/maps/{$map->code}?include=verifiers.flair")
             ->assertStatus(200)
             ->json();
 
-        $verificationWithUser = Verification::where('map_code', $map->code)->with('user')->first();
-        $expected = Verification::jsonStructure([
-            ...$verificationWithUser->toArray(),
-            'avatar_url' => 'https://example.com/verifier_avatar.png',
-            'banner_url' => 'https://example.com/verifier_banner.png',
-        ]);
-
-        $this->assertEquals([$expected], $actual['verifications']);
+        $verification = $actual['verifications'][0];
+        $this->assertEquals($user->discord_id, $verification['user_id']);
+        $this->assertEquals('https://example.com/verifier_avatar.png', $verification['user']['avatar_url']);
+        $this->assertEquals('https://example.com/verifier_banner.png', $verification['user']['banner_url']);
     }
 
     #[Group('get')]

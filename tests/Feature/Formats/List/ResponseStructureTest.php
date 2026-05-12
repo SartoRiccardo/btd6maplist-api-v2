@@ -52,6 +52,6 @@ class ResponseStructureTest extends TestCase
 
         $this->assertArrayNotHasKey('map_submission_wh', $response['data'][0]);
         $this->assertArrayNotHasKey('run_submission_wh', $response['data'][0]);
-        $this->assertArrayNotHasKey('emoji', $response['data'][0]);
+        $this->assertArrayHasKey('emoji', $response['data'][0]);
     }
 }
