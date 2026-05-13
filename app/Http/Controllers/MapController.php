@@ -187,6 +187,7 @@ class MapController
                     ->leftJoin('lccs_by_map AS lccs', 'lccs.id', '=', 'cm.lcc_id')
                     ->where('cp.user_id', $user->discord_id)
                     ->whereIn('c.map_code', $mapCodes)
+                    ->when($formatId, fn($q) => $q->whereIn('cm.format_id', (array) $formatId))
                     ->whereNotNull('cm.accepted_by_id')
                     ->whereNull('cm.deleted_on')
                     ->groupBy('c.map_code')
