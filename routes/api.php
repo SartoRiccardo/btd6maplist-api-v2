@@ -14,6 +14,14 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ImageGeneratorController;
 use App\Http\Controllers\MapSubmissionController;
+use App\Http\Controllers\NinjaKiwiProxyController;
+
+// Proxy endpoints
+Route::prefix('proxy/ninjakiwi')
+    ->controller(NinjaKiwiProxyController::class)
+    ->group(function () {
+        Route::get('/maps/{code}/preview.webp', 'mapPreview');
+    });
 
 Route::put('/read-rules', [UserController::class, 'readRules'])
     ->middleware('discord.auth');
