@@ -2,75 +2,205 @@
 
 namespace Tests\Feature\Users;
 
+use App\Models\User;
 use Tests\TestCase;
+use Tests\Traits\TestsDiscordAuthMiddleware;
 
 class ListUsersTest extends TestCase
 {
-    // GET /users — List Users
-    // Returns a paginated, optionally searched list of users. Requires global list:users permission.
+    use TestsDiscordAuthMiddleware;
+
+    // GET /api/users — Paginated user list. Requires global list:users permission.
+    // Response: { data, total, page, per_page } (NOT the standard meta wrapper)
+
+    protected function endpoint(): string { return '/api/users'; }
+    protected function method(): string { return 'GET'; }
+
+    private function actorWithPermission(): User
+    {
+        return $this->createUserWithPermissions([null => ['list:users']]);
+    }
 
     public function test_returns_paginated_user_list_with_200(): void
     {
-        $this->markTestSkipped('Returns paginated user list — authenticated user with permission gets 200 with data, total, page, per_page fields');
+        $actor = $this->actorWithPermission();
+        User::factory()->count(3)->create();
+
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users')
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertArrayHasKey('data', $actual);
+        $this->assertArrayHasKey('total', $actual);
+        $this->assertArrayHasKey('page', $actual);
+        $this->assertArrayHasKey('per_page', $actual);
+        $this->assertIsArray($actual['data']);
     }
 
     public function test_results_sorted_alphabetically_without_search(): void
     {
-        $this->markTestSkipped('Results sorted alphabetically without search — names come back A→Z');
+        $actor = $this->actorWithPermission();
+        User::factory()->create(['name' => 'Charlie']);
+        User::factory()->create(['name' => 'Alice']);
+        User::factory()->create(['name' => 'Bob']);
+
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users')
+            ->assertStatus(200)
+            ->json('data');
+
+        $names = collect($actual)->pluck('name')->values()->toArray();
+        $sortedNames = $names;
+        sort($sortedNames);
+        $this->assertEquals($sortedNames, $names);
     }
 
     public function test_search_returns_trigram_similar_names(): void
     {
-        $this->markTestSkipped('Search returns trigram-similar names — searching "CyberNinja" returns users with similar names, excludes unrelated ones');
+        $actor = $this->actorWithPermission();
+        User::factory()->create(['name' => 'CyberNinja']);
+        User::factory()->create(['name' => 'TotallyUnrelated']);
+
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?search=CyberNinja')
+            ->assertStatus(200)
+            ->json('data');
+
+        $names = collect($actual)->pluck('name')->toArray();
+        $this->assertContains('CyberNinja', $names);
+        $this->assertNotContains('TotallyUnrelated', $names);
     }
 
     public function test_include_flair_appends_avatar_url_and_banner_url(): void
     {
-        $this->markTestSkipped('include=flair appends avatar_url and banner_url — both fields present on every user in data');
+        $actor = $this->actorWithPermission();
+        User::factory()->create([
+            'cached_avatar_url' => 'https://example.com/av.png',
+            'cached_banner_url' => 'https://example.com/bn.png',
+            'ninjakiwi_cache_expire' => now()->addHour(),
+        ]);
+
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?include=flair')
+            ->assertStatus(200)
+            ->json('data');
+
+        foreach ($actual as $u) {
+            $this->assertArrayHasKey('avatar_url', $u);
+            $this->assertArrayHasKey('banner_url', $u);
+        }
     }
 
-    public function test_unauthenticated_returns_401(): void
+    public function test_no_list_users_permission_returns_403(): void
     {
-        $this->markTestSkipped('Unauthenticated returns 401 — no Bearer token');
+        $actor = $this->createUserWithPermissions([]);
+
+        $this->actingAs($actor, 'discord')
+            ->getJson('/api/users')
+            ->assertStatus(403);
     }
 
-    public function test_authenticated_but_no_list_users_permission_returns_403(): void
+    public function test_search_with_zero_matches_returns_empty_data_and_total_0(): void
     {
-        $this->markTestSkipped('Authenticated but no list:users permission returns 403');
+        $actor = $this->actorWithPermission();
+
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?search=xyznotexist99999')
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertEmpty($actual['data']);
+        $this->assertEquals(0, $actual['total']);
     }
 
-    public function test_search_with_zero_matches_returns_empty_data_and_total_zero(): void
+    public function test_user_below_similarity_threshold_excluded(): void
     {
-        $this->markTestSkipped('Search with zero matches returns empty data array and total=0');
+        $actor = $this->actorWithPermission();
+        User::factory()->create(['name' => 'CompletelyDifferentName']);
+
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?search=xyz')
+            ->assertStatus(200)
+            ->json('data');
+
+        $names = collect($actual)->pluck('name')->toArray();
+        $this->assertNotContains('CompletelyDifferentName', $names);
     }
 
-    public function test_user_below_similarity_threshold_excluded_from_search_results(): void
+    public function test_per_page_clamped_to_100(): void
     {
-        $this->markTestSkipped('User below similarity threshold (< 0.1) excluded from search results');
+        $actor = $this->actorWithPermission();
+
+        // No 422 — per_page is silently clamped to 100
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?per_page=200')
+            ->assertStatus(200)
+            ->json('per_page');
+
+        $this->assertEquals(100, $actual);
     }
 
-    public function test_per_page_clamped_to_100_even_if_200_requested(): void
+    public function test_page_2_returns_non_overlapping_results(): void
     {
-        $this->markTestSkipped('per_page clamped to 100 even if 200 requested — response per_page=100, max 100 items in data');
+        $actor = $this->actorWithPermission();
+        User::factory()->count(25)->create();
+
+        $page1 = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?per_page=20&page=1')
+            ->assertStatus(200)
+            ->json('data');
+
+        $page2 = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?per_page=20&page=2')
+            ->assertStatus(200)
+            ->json('data');
+
+        $ids1 = collect($page1)->pluck('discord_id')->toArray();
+        $ids2 = collect($page2)->pluck('discord_id')->toArray();
+        $this->assertEmpty(array_intersect($ids1, $ids2));
     }
 
-    public function test_page_2_returns_non_overlapping_results_from_page_1(): void
+    public function test_include_flair_user_no_nk_oak_returns_null_for_both_urls_not_missing(): void
     {
-        $this->markTestSkipped('page=2 returns non-overlapping results from page=1');
-    }
+        $actor = $this->actorWithPermission();
+        User::factory()->create(['nk_oak' => null]);
 
-    public function test_include_flair_on_user_with_no_nk_oak_returns_null_for_both_urls(): void
-    {
-        $this->markTestSkipped('include=flair on user with no nk_oak returns null for both urls — not missing key, explicitly null');
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?include=flair')
+            ->assertStatus(200)
+            ->json('data');
+
+        foreach ($actual as $u) {
+            $this->assertArrayHasKey('avatar_url', $u);
+            $this->assertArrayHasKey('banner_url', $u);
+            // nk_oak is hidden; check all users have the keys, at least one has null values
+        }
+        $nullFlair = collect($actual)->first(fn($u) => $u['avatar_url'] === null);
+        $this->assertNotNull($nullFlair);
     }
 
     public function test_simil_internal_field_never_leaks_into_response(): void
     {
-        $this->markTestSkipped('`simil` internal field never leaks into response — even when search is used');
+        $actor = $this->actorWithPermission();
+        User::factory()->create(['name' => 'SearchableUser']);
+
+        $actual = $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?search=SearchableUser')
+            ->assertStatus(200)
+            ->json('data');
+
+        foreach ($actual as $u) {
+            $this->assertArrayNotHasKey('simil', $u);
+        }
     }
 
-    public function test_include_with_unknown_value_ignored_no_error(): void
+    public function test_unknown_include_value_ignored_no_error(): void
     {
-        $this->markTestSkipped('include with unknown value (e.g. include=garbage) ignored, no error');
+        $actor = $this->actorWithPermission();
+
+        $this->actingAs($actor, 'discord')
+            ->getJson('/api/users?include=garbage')
+            ->assertStatus(200);
     }
 }

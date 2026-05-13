@@ -5,6 +5,7 @@ namespace Tests\Feature\Formats\Leaderboard;
 use App\Constants\FormatConstants;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
+use App\Models\Format;
 use App\Models\Map;
 use App\Models\User;
 use Tests\Abstract\TestsLeaderboardValueBehavior;
@@ -123,17 +124,24 @@ class LCCTest extends TestsLeaderboardValueBehavior
 
     public function test_lcc_leaderboard_disabled_returns_422(): void
     {
-        $this->markTestSkipped('is_lcc_leaderboard_enabled=false on format → GET leaderboard?value=lccs returns 422');
+        Format::where('id', FormatConstants::MAPLIST)->update(['is_lcc_leaderboard_enabled' => false]);
+
+        $this->getJson('/api/formats/' . FormatConstants::MAPLIST . '/leaderboard?value=lccs')
+            ->assertStatus(422);
     }
 
     public function test_lcc_leaderboard_enabled_returns_200(): void
     {
-        $this->markTestSkipped('is_lcc_leaderboard_enabled=true on format → GET leaderboard?value=lccs returns 200');
+        Format::where('id', FormatConstants::MAPLIST)->update(['is_lcc_leaderboard_enabled' => true]);
+
+        $this->getJson('/api/formats/' . FormatConstants::MAPLIST . '/leaderboard?value=lccs')
+            ->assertStatus(200);
     }
 
     public function test_disabled_leaderboard_flag_on_nonexistent_format_returns_404(): void
     {
-        $this->markTestSkipped('404 still wins over the leaderboard enabled flag check when format does not exist');
+        $this->getJson('/api/formats/99999/leaderboard?value=lccs')
+            ->assertStatus(404);
     }
 
     // Two users, same map, only highest leftover counts per map

@@ -5,6 +5,7 @@ namespace Tests\Feature\Formats\Leaderboard;
 use App\Constants\FormatConstants;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
+use App\Models\Format;
 use App\Models\Map;
 use App\Models\User;
 use Tests\Abstract\TestsLeaderboardValueBehavior;
@@ -55,12 +56,21 @@ class NoGeraldoTest extends TestsLeaderboardValueBehavior
 
     public function test_no_geraldo_leaderboard_disabled_returns_422(): void
     {
-        $this->markTestSkipped('is_no_geraldo_leaderboard_enabled=false on format → GET leaderboard?value=no_geraldo returns 422');
+        Format::where('id', FormatConstants::MAPLIST)->update(['is_no_geraldo_leaderboard_enabled' => false]);
+
+        $this->getJson('/api/formats/' . FormatConstants::MAPLIST . '/leaderboard?value=no_geraldo')
+            ->assertStatus(422);
     }
 
     public function test_no_geraldo_leaderboard_enabled_returns_200(): void
     {
-        $this->markTestSkipped('is_no_geraldo_leaderboard_enabled=true on format → GET leaderboard?value=no_geraldo returns 200');
+        Format::where('id', FormatConstants::MAPLIST)->update([
+            'is_no_geraldo_leaderboard_enabled' => true,
+            'is_no_geraldo_enabled' => true,
+        ]);
+
+        $this->getJson('/api/formats/' . FormatConstants::MAPLIST . '/leaderboard?value=no_geraldo')
+            ->assertStatus(200);
     }
 
     // Custom test specific to no geraldo (multiple completions on same map)

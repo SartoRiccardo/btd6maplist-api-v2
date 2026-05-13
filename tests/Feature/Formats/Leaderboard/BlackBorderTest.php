@@ -5,6 +5,7 @@ namespace Tests\Feature\Formats\Leaderboard;
 use App\Constants\FormatConstants;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
+use App\Models\Format;
 use App\Models\Map;
 use App\Models\User;
 use Tests\Abstract\TestsLeaderboardValueBehavior;
@@ -55,12 +56,18 @@ class BlackBorderTest extends TestsLeaderboardValueBehavior
 
     public function test_black_border_leaderboard_disabled_returns_422(): void
     {
-        $this->markTestSkipped('is_black_border_leaderboard_enabled=false on format → GET leaderboard?value=black_border returns 422');
+        Format::where('id', FormatConstants::MAPLIST)->update(['is_black_border_leaderboard_enabled' => false]);
+
+        $this->getJson('/api/formats/' . FormatConstants::MAPLIST . '/leaderboard?value=black_border')
+            ->assertStatus(422);
     }
 
     public function test_black_border_leaderboard_enabled_returns_200(): void
     {
-        $this->markTestSkipped('is_black_border_leaderboard_enabled=true on format → GET leaderboard?value=black_border returns 200');
+        Format::where('id', FormatConstants::MAPLIST)->update(['is_black_border_leaderboard_enabled' => true]);
+
+        $this->getJson('/api/formats/' . FormatConstants::MAPLIST . '/leaderboard?value=black_border')
+            ->assertStatus(200);
     }
 
     // Custom test specific to black border (multiple completions on same map)
