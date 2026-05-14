@@ -50,10 +50,16 @@ class ListUsersTest extends TestCase
             ->assertStatus(200)
             ->json('data');
 
-        $names = collect($actual)->pluck('name')->values()->toArray();
-        $sortedNames = $names;
-        sort($sortedNames);
-        $this->assertEquals($sortedNames, $names);
+        // Filter to known names only — the actor user has a random faker name that lands
+        // in the response and breaks PHP sort() vs Postgres collation when it starts lowercase.
+        $known = ['Alice', 'Bob', 'Charlie'];
+        $filtered = collect($actual)
+            ->pluck('name')
+            ->filter(fn($name) => in_array($name, $known))
+            ->values()
+            ->toArray();
+
+        $this->assertEquals(['Alice', 'Bob', 'Charlie'], $filtered);
     }
 
     public function test_search_returns_trigram_similar_names(): void
