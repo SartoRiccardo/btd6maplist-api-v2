@@ -121,6 +121,44 @@ class CompletionService
     }
 
     /**
+     * Sync admin-added image proofs for a completion.
+     * Deletes all existing admin-added proofs and inserts the new set.
+     * Original proofs (is_added_by_admin = false) are never touched.
+     *
+     * @param int $completionId
+     * @param array $proofs Mixed array of UploadedFile|string
+     */
+    public function syncAdminProofs(int $completionId, array $proofs): void
+    {
+        CompletionProof::where('run', $completionId)
+            ->where('is_added_by_admin', true)
+            ->delete();
+
+        $timestamp = now()->format('Ymd_His');
+
+        foreach ($proofs as $index => $proof) {
+            if ($proof instanceof UploadedFile) {
+                $extension = $proof->getClientOriginalExtension();
+                $path = $proof->storeAs(
+                    "completion_proofs/{$completionId}",
+                    "admin_{$timestamp}_{$index}.{$extension}",
+                    'public'
+                );
+                $url = Storage::disk('public')->url($path);
+            } else {
+                $url = $proof;
+            }
+
+            CompletionProof::create([
+                'run'              => $completionId,
+                'proof_url'        => $url,
+                'proof_type'       => ProofType::IMAGE,
+                'is_added_by_admin' => true,
+            ]);
+        }
+    }
+
+    /**
      * Create LeastCostChimps record if LCC data provided.
      *
      * @param array|null $lccData

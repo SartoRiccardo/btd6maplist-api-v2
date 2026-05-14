@@ -16,6 +16,11 @@ class CompletionProof extends Model
         'run',
         'proof_url',
         'proof_type',
+        'is_added_by_admin',
+    ];
+
+    protected $casts = [
+        'is_added_by_admin' => 'boolean',
     ];
 
     /**

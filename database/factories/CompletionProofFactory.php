@@ -25,6 +25,7 @@ class CompletionProofFactory extends Factory
                 ProofType::IMAGE,
                 ProofType::VIDEO,
             ]),
+            'is_added_by_admin' => false,
         ];
     }
 
@@ -36,6 +37,16 @@ class CompletionProofFactory extends Factory
         return $this->state(fn(array $attributes) => [
             'proof_type' => ProofType::IMAGE,
             'proof_url' => 'https://dummyimage.com/' . fake()->randomNumber(3, true) . 'x' . fake()->randomNumber(3, true),
+        ]);
+    }
+
+    /**
+     * Indicate the proof was added by an admin.
+     */
+    public function adminAdded(): static
+    {
+        return $this->state(fn(array $attributes) => [
+            'is_added_by_admin' => true,
         ]);
     }
 

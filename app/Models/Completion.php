@@ -71,14 +71,22 @@ class Completion extends Model
     }
 
     /**
-     * Get image proof URLs for API responses.
+     * Get image proofs for API responses. Original proofs first, admin-added after.
      */
     public function getSubmProofImgAttribute(): array
     {
         if (!$this->relationLoaded('proofs')) {
             $this->load('proofs');
         }
-        return $this->proofs->where('proof_type', ProofType::IMAGE)->pluck('proof_url')->values()->toArray();
+        return $this->proofs
+            ->where('proof_type', ProofType::IMAGE)
+            ->sortBy('is_added_by_admin')
+            ->values()
+            ->map(fn($p) => [
+                'url' => $p->proof_url,
+                'is_added_by_admin' => $p->is_added_by_admin,
+            ])
+            ->all();
     }
 
     /**

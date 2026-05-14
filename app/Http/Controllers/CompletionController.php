@@ -12,6 +12,7 @@ use App\Models\Completion;
 use App\Models\CompletionMeta;
 use App\Models\LeastCostChimps;
 use App\Models\MapListMeta;
+use App\Helpers\RequestHelpers;
 use App\Services\CompletionSubmission\CompletionSubmissionValidatorFactory;
 use App\Services\CompletionService;
 use App\Services\UserService;
@@ -490,7 +491,7 @@ class CompletionController
      *     @OA\Response(response=422, description="Validation error")
      * )
      */
-    public function update(UpdateCompletionRequest $request, $id)
+    public function update(UpdateCompletionRequest $request, CompletionService $service, $id)
     {
         $now = Carbon::now();
         $user = auth()->guard('discord')->user();
@@ -546,7 +547,9 @@ class CompletionController
             return response()->json(['message' => 'You cannot add yourself to the players list.'], 403);
         }
 
-        return DB::transaction(function () use ($validated, $user, $now, $existingMeta) {
+        $adminProofs = RequestHelpers::mergeFileAndUrlInputs($request, 'additional_image_proofs');
+
+        return DB::transaction(function () use ($validated, $user, $now, $existingMeta, $service, $adminProofs) {
             // Handle LCC - create new record if provided, otherwise remove
             $lccId = null;
             if (is_array($validated['lcc'])) {
@@ -582,6 +585,9 @@ class CompletionController
 
             // Attach players to new meta
             $newMeta->players()->attach($validated['players']);
+
+            // Sync admin-added image proofs
+            $service->syncAdminProofs($existingMeta->completion_id, $adminProofs);
 
             // Dispatch webhook update if completion was pending and is now being accepted
             if ($existingMeta->accepted_by_id === null && $acceptedBy !== null) {
