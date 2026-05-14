@@ -613,4 +613,83 @@ class UpdateCompletionTest extends TestCase
         // Should have old player
         $this->assertEquals($oldPlayer->discord_id, $oldVersion['players'][0]['discord_id']);
     }
+
+    // ========== ADMIN NOTE BLOCK TESTS ==========
+
+    #[Group('put')]
+    #[Group('completions')]
+    public function test_update_blocked_by_admin_note_returns_422_with_note_as_message(): void
+    {
+        $completion = $this->createCompletionForUpdate(FormatConstants::MAPLIST);
+        $completion->admin_note = 'Do not accept: invalid proof';
+        $completion->save();
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/completions/{$completion->id}", [
+                'format_id' => FormatConstants::MAPLIST,
+                'black_border' => false,
+                'no_geraldo' => false,
+                'players' => [$player->discord_id],
+                'accept' => false,
+            ])
+            ->assertStatus(422)
+            ->assertJson(['message' => 'Do not accept: invalid proof']);
+    }
+
+    #[Group('put')]
+    #[Group('completions')]
+    public function test_update_blocked_by_admin_note_regardless_of_accept_flag(): void
+    {
+        $completion = $this->createCompletionForUpdate(FormatConstants::MAPLIST);
+        $completion->admin_note = 'Blocked';
+        $completion->save();
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/completions/{$completion->id}", [
+                'format_id' => FormatConstants::MAPLIST,
+                'black_border' => false,
+                'no_geraldo' => false,
+                'players' => [$player->discord_id],
+                'accept' => true,
+            ])
+            ->assertStatus(422)
+            ->assertJson(['message' => 'Blocked']);
+    }
+
+    #[Group('put')]
+    #[Group('completions')]
+    public function test_update_unblocked_after_admin_note_removed(): void
+    {
+        $completion = $this->createCompletionForUpdate(FormatConstants::MAPLIST);
+        $completion->admin_note = 'Temp block';
+        $completion->save();
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $payload = [
+            'format_id' => FormatConstants::MAPLIST,
+            'black_border' => false,
+            'no_geraldo' => false,
+            'players' => [$player->discord_id],
+            'accept' => false,
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/completions/{$completion->id}", $payload)
+            ->assertStatus(422);
+
+        $completion->admin_note = null;
+        $completion->save();
+
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/completions/{$completion->id}", $payload)
+            ->assertStatus(204);
+    }
 }

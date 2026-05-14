@@ -38,6 +38,7 @@ class Completion extends Model
         'wh_msg_id',
         'wh_data',
         'copied_from_id',
+        'admin_note',
         'proofs',
         'completionMetas',
         'meta',

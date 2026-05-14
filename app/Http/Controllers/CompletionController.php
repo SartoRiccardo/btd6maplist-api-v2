@@ -165,6 +165,18 @@ class CompletionController
                 ->pluck('id');
         }
 
+        // Resolve admin_note visibility: only shown to users with edit:completion on the format
+        $includeAdminNote = in_array('admin_note', $include);
+        $adminNotePermittedFormatIds = [];
+        $adminNoteGlobalPerm = false;
+        if ($includeAdminNote) {
+            $authUser = auth()->guard('discord')->user();
+            if ($authUser) {
+                $adminNotePermittedFormatIds = $authUser->formatsWithPermission('edit:completion');
+                $adminNoteGlobalPerm = in_array(null, $adminNotePermittedFormatIds, true);
+            }
+        }
+
         // Append flair to players if requested
         $includePlayersFlair = in_array('players.flair', $include);
         if ($includePlayersFlair) {
@@ -178,7 +190,7 @@ class CompletionController
         }
 
         // Build data array from paginated metas
-        $data = $metaPaginated->map(function ($meta) use ($mapMetadataByKey, $currentLccIds) {
+        $data = $metaPaginated->map(function ($meta) use ($mapMetadataByKey, $currentLccIds, $includeAdminNote, $adminNotePermittedFormatIds, $adminNoteGlobalPerm) {
             $completion = $meta->completion;
             if (!$completion) {
                 return null;
@@ -193,6 +205,10 @@ class CompletionController
                 ],
                 'is_current_lcc' => $meta->lcc_id ? $currentLccIds->contains($meta->lcc_id) : false,
             ];
+
+            if ($includeAdminNote && ($adminNoteGlobalPerm || in_array($meta->format_id, $adminNotePermittedFormatIds, true))) {
+                $result['admin_note'] = $completion->admin_note;
+            }
 
             return $result;
         })
@@ -262,6 +278,7 @@ class CompletionController
         $includeMapMetadata = in_array('map.metadata', $include);
         $includePlayersFlair = in_array('players.flair', $include);
         $includeAcceptedByFlair = in_array('accepted_by.flair', $include);
+        $includeAdminNote = in_array('admin_note', $include);
 
         // Get the completion
         $completion = Completion::with(['map', 'proofs'])->find($id);
@@ -333,6 +350,19 @@ class CompletionController
 
                 return $player->toArray();
             });
+        }
+
+        if ($includeAdminNote) {
+            $authUser = auth()->guard('discord')->user();
+            if ($authUser) {
+                $permittedFormatIds = $authUser->formatsWithPermission('edit:completion');
+                $canSee = in_array(null, $permittedFormatIds, true) || in_array($meta->format_id, $permittedFormatIds, true);
+            } else {
+                $canSee = false;
+            }
+            if ($canSee) {
+                $result['admin_note'] = $completion->admin_note;
+            }
         }
 
         return response()->json($result);
@@ -533,6 +563,12 @@ class CompletionController
             return response()->json(['message' => 'Forbidden - You do not have edit:completion permission for the ' . implode(' and ', $missing) . '.'], 403);
         }
 
+        // Business rule: Cannot update a completion that has an admin note
+        $completion = Completion::find($id);
+        if ($completion && $completion->admin_note !== null) {
+            return response()->json(['message' => $completion->admin_note], 422);
+        }
+
         // Load existing players to check business rule
         $existingMeta->load('players');
         $existingPlayerIds = $existingMeta->players->pluck('discord_id')->toArray();
@@ -656,6 +692,10 @@ class CompletionController
             return response()->json(['message' => 'Forbidden - You do not have permission to accept completions for this format.'], 403);
         }
 
+        if ($completion->admin_note !== null) {
+            return response()->json(['message' => $completion->admin_note], 422);
+        }
+
         $existingMeta->accepted_by_id = $user->discord_id;
         $existingMeta->save();
 
@@ -727,6 +767,94 @@ class CompletionController
         if ($completion->wh_msg_id) {
             UpdateCompletionWebhookJob::dispatch($completion->id, fail: true);
         }
+
+        return response()->noContent();
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/completions/{id}/admin-note",
+     *     summary="Set admin note on a completion",
+     *     description="Sets an admin note on a completion. The note is hidden from all GET responses unless ?include=admin_note is passed. A non-null admin note blocks all updates (PUT /completions/{id}) and bot acceptance until removed. Requires edit:completion permission for the completion's format.",
+     *     tags={"Completions"},
+     *     security={{"discord_auth": {}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(mediaType="application/json", @OA\Schema(
+     *             required={"admin_note"},
+     *             @OA\Property(property="admin_note", type="string", minLength=1, example="Flagged: invalid proof")
+     *         ))
+     *     ),
+     *     @OA\Response(response=204, description="Admin note set"),
+     *     @OA\Response(response=403, description="Forbidden - missing edit:completion permission"),
+     *     @OA\Response(response=404, description="Completion not found"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function setAdminNote(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'admin_note' => ['required', 'string', 'min:1'],
+        ]);
+
+        $now = Carbon::now();
+        $user = auth()->guard('discord')->user();
+
+        $existingMeta = CompletionMeta::activeForCompletion($id, $now);
+        if (!$existingMeta) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $userFormatIds = $user->formatsWithPermission('edit:completion');
+        $hasGlobalPermission = in_array(null, $userFormatIds, true);
+        $hasFormatPermission = in_array($existingMeta->format_id, $userFormatIds, true);
+
+        if (!$hasGlobalPermission && !$hasFormatPermission) {
+            return response()->json(['message' => 'Forbidden - You do not have permission to edit completions for this format.'], 403);
+        }
+
+        $completion = Completion::find($id);
+        $completion->admin_note = $validated['admin_note'];
+        $completion->save();
+
+        return response()->noContent();
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/completions/{id}/admin-note",
+     *     summary="Remove admin note from a completion",
+     *     description="Sets admin_note to NULL, unblocking the completion for updates and bot acceptance. Idempotent. Requires edit:completion permission for the completion's format.",
+     *     tags={"Completions"},
+     *     security={{"discord_auth": {}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=204, description="Admin note removed"),
+     *     @OA\Response(response=403, description="Forbidden - missing edit:completion permission"),
+     *     @OA\Response(response=404, description="Completion not found")
+     * )
+     */
+    public function deleteAdminNote($id)
+    {
+        $now = Carbon::now();
+        $user = auth()->guard('discord')->user();
+
+        $existingMeta = CompletionMeta::activeForCompletion($id, $now);
+        if (!$existingMeta) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        $userFormatIds = $user->formatsWithPermission('edit:completion');
+        $hasGlobalPermission = in_array(null, $userFormatIds, true);
+        $hasFormatPermission = in_array($existingMeta->format_id, $userFormatIds, true);
+
+        if (!$hasGlobalPermission && !$hasFormatPermission) {
+            return response()->json(['message' => 'Forbidden - You do not have permission to edit completions for this format.'], 403);
+        }
+
+        $completion = Completion::find($id);
+        $completion->admin_note = null;
+        $completion->save();
 
         return response()->noContent();
     }

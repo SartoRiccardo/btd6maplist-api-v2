@@ -112,6 +112,8 @@ Route::prefix('completions')
                 Route::post('/submit', 'submit');
                 Route::put('/{id}', 'update');
                 Route::delete('/{id}', 'destroy');
+                Route::put('/{id}/admin-note', 'setAdminNote');
+                Route::delete('/{id}/admin-note', 'deleteAdminNote');
             });
     });
 

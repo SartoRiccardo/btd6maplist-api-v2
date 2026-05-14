@@ -492,4 +492,120 @@ class ShowTest extends TestCase
         $this->assertEquals('https://example.com/avatar.png', $actual['accepted_by']['avatar_url']);
         $this->assertEquals('https://example.com/banner.png', $actual['accepted_by']['banner_url']);
     }
+
+    // ============================================
+    // Include admin_note Tests
+    // ============================================
+
+    #[Group('get')]
+    #[Group('completions')]
+    #[Group('include')]
+    public function test_admin_note_absent_without_include_param(): void
+    {
+        $completion = Completion::factory()->create();
+        CompletionMeta::factory()->for($completion)->accepted()->create();
+
+        $actual = $this->getJson("/api/completions/{$completion->id}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertArrayNotHasKey('admin_note', $actual);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    #[Group('include')]
+    public function test_admin_note_silently_ignored_when_unauthenticated(): void
+    {
+        $completion = Completion::factory()->create(['admin_note' => 'Secret']);
+        CompletionMeta::factory()->for($completion)->accepted()->create();
+
+        $actual = $this->getJson("/api/completions/{$completion->id}?include=admin_note")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertArrayNotHasKey('admin_note', $actual);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    #[Group('include')]
+    public function test_admin_note_silently_ignored_with_wrong_format_permission(): void
+    {
+        $completion = Completion::factory()->create(['admin_note' => 'Secret']);
+        CompletionMeta::factory()->for($completion)->accepted()->create([
+            'format_id' => FormatConstants::EXPERT_LIST,
+        ]);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completion->id}?include=admin_note")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertArrayNotHasKey('admin_note', $actual);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    #[Group('include')]
+    public function test_admin_note_included_with_correct_format_permission(): void
+    {
+        $completion = Completion::factory()->create(['admin_note' => 'Admin flagged']);
+        CompletionMeta::factory()->for($completion)->accepted()->create([
+            'format_id' => FormatConstants::MAPLIST,
+        ]);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completion->id}?include=admin_note")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertArrayHasKey('admin_note', $actual);
+        $this->assertEquals('Admin flagged', $actual['admin_note']);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    #[Group('include')]
+    public function test_admin_note_null_when_not_set(): void
+    {
+        $completion = Completion::factory()->create(['admin_note' => null]);
+        CompletionMeta::factory()->for($completion)->accepted()->create([
+            'format_id' => FormatConstants::MAPLIST,
+        ]);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completion->id}?include=admin_note")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertArrayHasKey('admin_note', $actual);
+        $this->assertNull($actual['admin_note']);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    #[Group('include')]
+    public function test_admin_note_combined_with_other_includes(): void
+    {
+        $player = User::factory()->withOak('test_oak')->cachedFlair()->create();
+        $completion = Completion::factory()->create(['admin_note' => 'Combo note']);
+        CompletionMeta::factory()->for($completion)->accepted()->withPlayers([$player])->create([
+            'format_id' => FormatConstants::MAPLIST,
+        ]);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completion->id}?include=admin_note,players.flair")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertArrayHasKey('admin_note', $actual);
+        $this->assertEquals('Combo note', $actual['admin_note']);
+        $this->assertArrayHasKey('players', $actual);
+        $this->assertNotEmpty($actual['players']);
+    }
 }
