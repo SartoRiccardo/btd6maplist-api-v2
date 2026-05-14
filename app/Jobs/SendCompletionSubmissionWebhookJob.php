@@ -247,7 +247,7 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
         $frontendUrl = env('FRONTEND_URL');
 
         return [
-            'url' => $frontendUrl ? "{$frontendUrl}/maps/{$mapCode}" : null,
+            'url' => $frontendUrl ? "{$frontendUrl}/map/{$mapCode}" : null,
             'image' => [
                 'url' => $imageUrl,
             ],
