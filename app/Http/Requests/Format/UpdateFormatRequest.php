@@ -63,7 +63,7 @@ class UpdateFormatRequest extends BaseRequest
             'run_submission_wh' => ['nullable', 'url'],
             'hidden' => ['required', 'boolean'],
             'run_submission_status' => ['required', 'in:closed,open,lcc_only'],
-            'map_submission_status' => ['required', 'in:closed,open'],
+            'map_submission_status' => ['required', 'in:closed,open,with_recording'],
             'emoji' => ['nullable', 'string', 'max:255'],
             'proposed_difficulties' => ['nullable', 'array'],
             'is_no_geraldo_enabled' => ['nullable', 'boolean'],

@@ -17,6 +17,13 @@ use App\Http\Requests\BaseRequest;
  */
 class StoreMapSubmissionRequest extends BaseRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('video_proof_urls') || $this->input('video_proof_urls') === null) {
+            $this->merge(['video_proof_urls' => []]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      */
@@ -28,6 +35,8 @@ class StoreMapSubmissionRequest extends BaseRequest
             'proposed' => ['required', 'integer', 'min:0'],
             'subm_notes' => ['nullable', 'string', 'max:5000'],
             'completion_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:10240'],
+            'video_proof_urls' => ['array', 'max:5'],
+            'video_proof_urls.*' => ['string', 'url', 'max:500'],
         ];
     }
 

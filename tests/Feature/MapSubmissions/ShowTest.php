@@ -103,4 +103,32 @@ class ShowTest extends TestCase
         $this->assertArrayHasKey('format', $actual);
         $this->assertEquals($submission->format->id, $actual['format']['id']);
     }
+
+    #[Group('show')]
+    #[Group('map_submissions')]
+    public function test_show_includes_video_proof_urls_field(): void
+    {
+        $submission = MapSubmission::factory()->create(['video_proof_urls' => []]);
+
+        $actual = $this->getJson("/api/maps/submissions/{$submission->id}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertArrayHasKey('video_proof_urls', $actual);
+        $this->assertSame([], $actual['video_proof_urls']);
+    }
+
+    #[Group('show')]
+    #[Group('map_submissions')]
+    public function test_show_video_proof_urls_returns_stored_urls(): void
+    {
+        $urls = ['https://youtu.be/aaa', 'https://youtu.be/bbb'];
+        $submission = MapSubmission::factory()->create(['video_proof_urls' => $urls]);
+
+        $actual = $this->getJson("/api/maps/submissions/{$submission->id}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertEquals($urls, $actual['video_proof_urls']);
+    }
 }

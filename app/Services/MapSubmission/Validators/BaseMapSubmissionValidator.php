@@ -15,6 +15,15 @@ use Illuminate\Validation\ValidationException;
 class BaseMapSubmissionValidator implements SubmissionValidatorInterface
 {
     protected int $formatId;
+    private ?Format $cachedFormat = null;
+
+    private function getFormat(): Format
+    {
+        if ($this->cachedFormat === null || $this->cachedFormat->id !== $this->formatId) {
+            $this->cachedFormat = Format::findOrFail($this->formatId);
+        }
+        return $this->cachedFormat;
+    }
 
     /**
      * Validate map submission data.
@@ -27,12 +36,13 @@ class BaseMapSubmissionValidator implements SubmissionValidatorInterface
     public function validate(array $data, User $user): void
     {
         $this->formatId = $data['format_id'];
-        $this->validateFormatSubmissionStatus($data['format_id']);
+        $this->validateFormatSubmissionStatus();
         $this->validateUserPermission($user, $data['format_id']);
         $this->validateNoPendingSubmission($user, $data);
         $this->validateMapNotInList($data['code']);
-        $this->validateProposedValue($data['format_id'], $data['proposed']);
+        $this->validateProposedValue($data['proposed']);
         $this->validateMapExists($data['code']);
+        $this->validateVideoProofUrls($data['video_proof_urls'] ?? []);
     }
 
     /**
@@ -42,11 +52,9 @@ class BaseMapSubmissionValidator implements SubmissionValidatorInterface
      * @return void
      * @throws ValidationException
      */
-    protected function validateFormatSubmissionStatus(int $formatId): void
+    protected function validateFormatSubmissionStatus(): void
     {
-        $format = Format::findOrFail($formatId);
-
-        if ($format->map_submission_status !== 'open') {
+        if (!in_array($this->getFormat()->map_submission_status, ['open', 'with_recording'])) {
             throw ValidationException::withMessages([
                 'format_id' => "Map submissions are closed for this format.",
             ]);
@@ -116,9 +124,9 @@ class BaseMapSubmissionValidator implements SubmissionValidatorInterface
      * @return void
      * @throws ValidationException
      */
-    protected function validateProposedValue(int $formatId, mixed $proposed): void
+    protected function validateProposedValue(mixed $proposed): void
     {
-        $format = Format::findOrFail($formatId);
+        $format = $this->getFormat();
 
         // Only validate if format has proposed_difficulties configured
         if ($format->proposed_difficulties !== null) {
@@ -129,6 +137,18 @@ class BaseMapSubmissionValidator implements SubmissionValidatorInterface
                     'proposed' => "The proposed value must be one of: " . implode(', ', array_keys($difficulties)),
                 ]);
             }
+        }
+    }
+
+    /**
+     * Validate that with_recording formats have at least one video URL.
+     */
+    protected function validateVideoProofUrls(array $videoProofUrls): void
+    {
+        if ($this->getFormat()->map_submission_status === 'with_recording' && empty($videoProofUrls)) {
+            throw ValidationException::withMessages([
+                'video_proof_urls' => 'A video proof URL is required for this format.',
+            ]);
         }
     }
 

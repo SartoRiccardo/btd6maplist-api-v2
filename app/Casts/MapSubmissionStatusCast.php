@@ -9,6 +9,7 @@ class MapSubmissionStatusCast implements CastsAttributes
     private const STATUS_MAP = [
         0 => 'closed',
         1 => 'open',
+        2 => 'with_recording',
     ];
 
     public function get($model, string $key, $value, array $attributes): string

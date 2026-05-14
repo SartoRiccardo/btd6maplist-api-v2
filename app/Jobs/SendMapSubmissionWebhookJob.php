@@ -126,6 +126,21 @@ class SendMapSubmissionWebhookJob implements ShouldQueue
             $embed['image'] = ['url' => $submission->completion_proof];
         }
 
+        // Add video proof URLs if available
+        $videoUrls = $submission->video_proof_urls ?? [];
+        if (!empty($videoUrls)) {
+            $fieldName = count($videoUrls) === 1 ? 'Video Proof URL' : 'Video Proof URLs';
+            $fieldValue = count($videoUrls) === 1
+                ? $videoUrls[0]
+                : '- ' . implode("\n- ", $videoUrls);
+
+            $embed['fields'][] = [
+                'name' => $fieldName,
+                'value' => $fieldValue,
+                'inline' => false,
+            ];
+        }
+
         return $embed;
     }
 

@@ -450,6 +450,338 @@ class StoreTest extends TestCase
             ->assertJsonValidationErrors(['completion_proof']);
     }
 
+    // ========== VIDEO PROOF URL TESTS ==========
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_video_proof_urls_absent_defaults_to_empty_array(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $submissionId = $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                // video_proof_urls intentionally absent
+            ])
+            ->assertStatus(201)
+            ->json('id');
+
+        $actual = $this->getJson("/api/maps/submissions/{$submissionId}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertSame([], $actual['video_proof_urls']);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_video_proof_urls_empty_array_is_valid_for_open_format(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => [],
+            ])
+            ->assertStatus(201);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_video_proof_urls_persisted_and_returned(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $urls = ['https://youtu.be/aaa', 'https://youtu.be/bbb'];
+
+        $submissionId = $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => $urls,
+            ])
+            ->assertStatus(201)
+            ->json('id');
+
+        $actual = $this->getJson("/api/maps/submissions/{$submissionId}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertEquals($urls, $actual['video_proof_urls']);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_video_proof_urls_rejects_more_than_five(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => [
+                    'https://youtu.be/a',
+                    'https://youtu.be/b',
+                    'https://youtu.be/c',
+                    'https://youtu.be/d',
+                    'https://youtu.be/e',
+                    'https://youtu.be/f',
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['video_proof_urls']);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_video_proof_urls_accepts_exactly_five(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => [
+                    'https://youtu.be/a',
+                    'https://youtu.be/b',
+                    'https://youtu.be/c',
+                    'https://youtu.be/d',
+                    'https://youtu.be/e',
+                ],
+            ])
+            ->assertStatus(201);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_video_proof_urls_rejects_non_array(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => 'https://youtu.be/aaa',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['video_proof_urls']);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_video_proof_urls_rejects_invalid_url(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => ['not-a-valid-url'],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['video_proof_urls.0']);
+    }
+
+    // ========== WITH_RECORDING FORMAT TESTS ==========
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_with_recording_format_requires_video_proof_url(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'with_recording';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                // video_proof_urls intentionally absent
+            ])
+            ->assertStatus(422)
+            ->assertJson(['errors' => ['video_proof_urls' => ['A video proof URL is required for this format.']]]);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_with_recording_format_requires_video_proof_url_when_empty_array(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'with_recording';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => [],
+            ])
+            ->assertStatus(422)
+            ->assertJson(['errors' => ['video_proof_urls' => ['A video proof URL is required for this format.']]]);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_with_recording_format_succeeds_with_one_video_url(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'with_recording';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => ['https://youtu.be/example'],
+            ])
+            ->assertStatus(201);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_with_recording_format_succeeds_with_five_video_urls(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'with_recording';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'video_proof_urls' => [
+                    'https://youtu.be/a',
+                    'https://youtu.be/b',
+                    'https://youtu.be/c',
+                    'https://youtu.be/d',
+                    'https://youtu.be/e',
+                ],
+            ])
+            ->assertStatus(201);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_open_format_does_not_require_video_proof_url(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                // video_proof_urls absent — should be fine
+            ])
+            ->assertStatus(201);
+    }
+
     #[Group('store')]
     #[Group('map_submissions')]
     public function test_store_saves_image_to_storage(): void

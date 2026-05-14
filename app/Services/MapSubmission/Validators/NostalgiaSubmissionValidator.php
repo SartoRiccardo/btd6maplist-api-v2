@@ -15,7 +15,7 @@ class NostalgiaSubmissionValidator extends BaseMapSubmissionValidator
      * @return void
      * @throws ValidationException
      */
-    protected function validateProposedValue(int $formatId, mixed $proposed): void
+    protected function validateProposedValue(mixed $proposed): void
     {
         $retroMap = RetroMap::find($proposed);
 

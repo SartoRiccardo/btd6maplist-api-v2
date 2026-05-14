@@ -356,4 +356,121 @@ class SendMapSubmissionWebhookJobTest extends TestCase
         // icon_url should not be set
         $this->assertArrayNotHasKey('icon_url', $payload['embeds'][0]['author']);
     }
+
+    public function test_job_no_video_field_when_video_proof_urls_empty(): void
+    {
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        $submission = MapSubmission::factory()->create([
+            'code' => $this->map->code,
+            'submitter_id' => $this->submitter->discord_id,
+            'format_id' => $format->id,
+            'proposed' => 1,
+            'video_proof_urls' => [],
+        ]);
+
+        DiscordWebhookClient::fake(true);
+
+        $job = new SendMapSubmissionWebhookJob($submission->id);
+        $job->handle(app(DiscordWebhookClient::class));
+
+        $submission->refresh();
+        $payload = json_decode($submission->wh_data, true);
+
+        // Only the proposed placement field should be present
+        $this->assertCount(1, $payload['embeds'][0]['fields']);
+        $this->assertEquals('Proposed Placement', $payload['embeds'][0]['fields'][0]['name']);
+    }
+
+    public function test_job_single_video_url_formats_correctly(): void
+    {
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        $submission = MapSubmission::factory()->create([
+            'code' => $this->map->code,
+            'submitter_id' => $this->submitter->discord_id,
+            'format_id' => $format->id,
+            'proposed' => 1,
+            'video_proof_urls' => ['https://youtu.be/example'],
+        ]);
+
+        DiscordWebhookClient::fake(true);
+
+        $job = new SendMapSubmissionWebhookJob($submission->id);
+        $job->handle(app(DiscordWebhookClient::class));
+
+        $submission->refresh();
+        $payload = json_decode($submission->wh_data, true);
+
+        $fields = $payload['embeds'][0]['fields'];
+        $videoField = $fields[1];
+        $this->assertEquals('Video Proof URL', $videoField['name']);
+        $this->assertEquals('https://youtu.be/example', $videoField['value']);
+        $this->assertFalse($videoField['inline']);
+    }
+
+    public function test_job_multiple_video_urls_formats_as_bullet_list(): void
+    {
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        $submission = MapSubmission::factory()->create([
+            'code' => $this->map->code,
+            'submitter_id' => $this->submitter->discord_id,
+            'format_id' => $format->id,
+            'proposed' => 1,
+            'video_proof_urls' => [
+                'https://youtu.be/aaa',
+                'https://youtu.be/bbb',
+                'https://youtu.be/ccc',
+            ],
+        ]);
+
+        DiscordWebhookClient::fake(true);
+
+        $job = new SendMapSubmissionWebhookJob($submission->id);
+        $job->handle(app(DiscordWebhookClient::class));
+
+        $submission->refresh();
+        $payload = json_decode($submission->wh_data, true);
+
+        $fields = $payload['embeds'][0]['fields'];
+        $videoField = $fields[1];
+        $this->assertEquals('Video Proof URLs', $videoField['name']);
+        $this->assertEquals("- https://youtu.be/aaa\n- https://youtu.be/bbb\n- https://youtu.be/ccc", $videoField['value']);
+        $this->assertFalse($videoField['inline']);
+    }
+
+    public function test_job_video_field_appended_after_proposed_field(): void
+    {
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        $submission = MapSubmission::factory()->create([
+            'code' => $this->map->code,
+            'submitter_id' => $this->submitter->discord_id,
+            'format_id' => $format->id,
+            'proposed' => 1,
+            'video_proof_urls' => ['https://youtu.be/example'],
+        ]);
+
+        DiscordWebhookClient::fake(true);
+
+        $job = new SendMapSubmissionWebhookJob($submission->id);
+        $job->handle(app(DiscordWebhookClient::class));
+
+        $submission->refresh();
+        $payload = json_decode($submission->wh_data, true);
+
+        $fields = $payload['embeds'][0]['fields'];
+        $this->assertCount(2, $fields);
+        $this->assertEquals('Proposed Placement', $fields[0]['name']);
+        $this->assertEquals('Video Proof URL', $fields[1]['name']);
+    }
 }

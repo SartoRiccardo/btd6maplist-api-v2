@@ -29,6 +29,7 @@ class MapSubmissionFactory extends Factory
             'rejected_by' => null,
             'created_on' => now(),
             'completion_proof' => 'map_submission_proofs/test.jpg',
+            'video_proof_urls' => [],
             'accepted_meta_id' => null,
         ];
     }

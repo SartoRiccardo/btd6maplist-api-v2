@@ -142,6 +142,7 @@ class MapSubmissionController extends Controller
             'format_id' => $data['format_id'],
             'proposed' => $data['proposed'],
             'completion_proof' => Storage::disk('public')->url($path),
+            'video_proof_urls' => $data['video_proof_urls'] ?? [],
             'created_on' => now(),
         ]);
 

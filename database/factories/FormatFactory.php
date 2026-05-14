@@ -22,7 +22,7 @@ class FormatFactory extends Factory
             'name' => fake()->words(2, true),
             'hidden' => false,
             'run_submission_status' => fake()->randomElement(['closed', 'open', 'lcc_only']),
-            'map_submission_status' => fake()->randomElement(['closed', 'open']),
+            'map_submission_status' => fake()->randomElement(['closed', 'open', 'with_recording']),
             'map_submission_wh' => fake()->optional()->url(),
             'run_submission_wh' => fake()->optional()->url(),
             'emoji' => fake()->optional()->emoji(),

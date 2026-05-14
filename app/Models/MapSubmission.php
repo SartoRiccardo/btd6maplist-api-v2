@@ -39,6 +39,7 @@ class MapSubmission extends Model
         'rejected_by',
         'created_on',
         'completion_proof',
+        'video_proof_urls',
         'wh_data',
         'wh_msg_id',
         'accepted_meta_id',
@@ -57,6 +58,7 @@ class MapSubmission extends Model
     protected $casts = [
         'created_on' => 'timestamp',
         'submitter_id' => 'string',
+        'video_proof_urls' => 'array',
     ];
 
     /**
@@ -151,6 +153,7 @@ class MapSubmission extends Model
             'rejected_by' => $data['rejected_by'] ?? null,
             'created_on' => $data['created_on'] ?? null,
             'completion_proof' => $data['completion_proof'] ?? null,
+            'video_proof_urls' => $data['video_proof_urls'] ?? [],
             'status' => $data['status'],
         ];
     }
