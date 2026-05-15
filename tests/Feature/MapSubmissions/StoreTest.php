@@ -820,4 +820,81 @@ class StoreTest extends TestCase
             : $actual['completion_proof'];
         Storage::disk('public')->assertExists($storagePath);
     }
+
+    // ========== SUBM NOTES TESTS ==========
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_subm_notes_rejects_more_than_40_newlines(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'subm_notes' => str_repeat("line\n", 41),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['subm_notes']);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_subm_notes_rejects_more_than_1500_chars(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'subm_notes' => str_repeat('a', 1501),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['subm_notes']);
+    }
+
+    #[Group('store')]
+    #[Group('map_submissions')]
+    public function test_store_subm_notes_accepts_exactly_at_limits(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:map_submission']]);
+        $map = Map::factory()->create();
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->map_submission_status = 'open';
+        $format->save();
+
+        NinjaKiwiApiClient::fakeMapExists([$map->code => true]);
+        Storage::fake('public');
+
+        // 40 newlines, total length well under 1500
+        $this->actingAs($user, 'discord')
+            ->postJson('/api/maps/submissions', [
+                'code' => $map->code,
+                'format_id' => $format->id,
+                'proposed' => 0,
+                'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
+                'subm_notes' => str_repeat("line\n", 40),
+            ])
+            ->assertStatus(201);
+    }
 }

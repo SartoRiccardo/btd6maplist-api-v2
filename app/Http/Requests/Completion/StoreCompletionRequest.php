@@ -42,7 +42,11 @@ class StoreCompletionRequest extends CompletionRequest
     {
         return array_merge(parent::rules(), [
             'map' => ['required', 'string', 'max:10', 'exists:maps,code'],
-            'subm_notes' => ['nullable', 'string', 'max:5000'],
+            'subm_notes' => ['nullable', 'string', 'max:1500', function ($attribute, $value, $fail) {
+                if (substr_count($value, "\n") > 40) {
+                    $fail('The submission notes may not have more than 40 newlines.');
+                }
+            }],
             'proof_images' => ['required', 'array', 'min:1', 'max:4'],
             'proof_images.*' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:10240'],
             'proof_videos' => ['nullable', 'array', 'max:10'],
