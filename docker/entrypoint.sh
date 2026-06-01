@@ -7,5 +7,5 @@ php artisan view:cache
 php artisan storage:link
 php artisan migrate --force
 
-php-fpm -D --nodaemonize 2>&1 &
+php-fpm -F 2>&1 &
 exec nginx -g 'daemon off;'
