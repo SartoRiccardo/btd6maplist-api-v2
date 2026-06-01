@@ -21,7 +21,7 @@ class ResponseStructureTest extends TestCase
             ->assertStatus(200)
             ->json();
 
-        $expectedUrl = url("/api/proxy/ninjakiwi/maps/{$map->code}/preview.webp");
+        $expectedUrl = url("api/proxy/ninjakiwi/maps/{$map->code}/preview.webp");
 
         $this->assertEquals($expectedUrl, $actual['data'][0]['map_preview_url']);
     }
