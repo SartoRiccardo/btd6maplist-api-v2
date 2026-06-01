@@ -17,10 +17,12 @@ class Log422Responses
             return $response;
         }
 
+        $user = auth()->guard('discord')->user();
         $context = [
             'method' => $request->method(),
-            'path'   => $request->getPathInfo(),
+            'path' => $request->getPathInfo(),
             'status' => $status,
+            'discord_id' => $user?->discord_id,
         ];
 
         $contentType = $response->headers->get('Content-Type', '');
