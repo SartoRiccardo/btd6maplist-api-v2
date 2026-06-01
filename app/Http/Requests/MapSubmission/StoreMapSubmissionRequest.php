@@ -33,15 +33,21 @@ class StoreMapSubmissionRequest extends BaseRequest
             'code' => ['required', 'string', 'max:10'],
             'format_id' => ['required', 'integer', 'min:1', 'exists:formats,id'],
             'proposed' => ['required', 'integer', 'min:0'],
-            'subm_notes' => ['nullable', 'string', 'max:1500', function ($attribute, $value, $fail) {
-                if (substr_count($value, "\n") > 40) {
-                    $fail('The submission notes may not have more than 40 newlines.');
-                }
-            }],
+            'subm_notes' => ['nullable', 'string', 'max:1500'],
             'completion_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:10240'],
             'video_proof_urls' => ['array', 'max:5'],
             'video_proof_urls.*' => ['string', 'url', 'max:500'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $value = $this->input('subm_notes');
+            if ($value !== null && substr_count($value, "\n") > 40) {
+                $validator->errors()->add('subm_notes', 'The submission notes may not have more than 40 newlines.');
+            }
+        });
     }
 
     /**
