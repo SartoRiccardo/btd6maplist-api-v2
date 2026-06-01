@@ -55,7 +55,7 @@ class Map extends Model
      */
     protected function getMapPreviewUrlAttribute(): ?string
     {
-        return $this->attributes['map_preview_url'] ?? url("api/proxy/ninjakiwi/maps/{$this->code}/preview.webp");
+        return $this->attributes['map_preview_url'] ?? rtrim(config('app.url'), '/') . "/api/proxy/ninjakiwi/maps/{$this->code}/preview.webp";
     }
 
     /**

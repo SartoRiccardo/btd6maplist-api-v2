@@ -18,6 +18,21 @@ class GetMapTest extends TestCase
 {
     #[Group('get')]
     #[Group('maps')]
+    public function test_map_preview_url_defaults_to_ninja_kiwi_when_null(): void
+    {
+        $map = Map::factory()->withMeta()->create(['map_preview_url' => null]);
+
+        $actual = $this->getJson("/api/maps/{$map->code}")
+            ->assertStatus(200)
+            ->json();
+
+        $expectedUrl = rtrim(config('app.url'), '/') . "/api/proxy/ninjakiwi/maps/{$map->code}/preview.webp";
+
+        $this->assertEquals($expectedUrl, $actual['map_preview_url']);
+    }
+
+    #[Group('get')]
+    #[Group('maps')]
     public function test_get_map_successfully(): void
     {
         $map = Map::factory()->withMeta()->create();
