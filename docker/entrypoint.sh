@@ -7,5 +7,4 @@ php artisan view:cache
 php artisan storage:link
 php artisan migrate --force
 
-php-fpm -F 2>&1 &
-exec nginx -g 'daemon off;'
+exec supervisord -c /etc/supervisor.d/supervisord.ini
