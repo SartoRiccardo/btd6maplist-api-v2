@@ -12,14 +12,23 @@ class Log422Responses
     {
         $response = $next($request);
 
-        if ($response->getStatusCode() === 422) {
-            \Log::debug('422 Unprocessable', [
-                'method' => $request->method(),
-                'path'   => $request->getPathInfo(),
-                'input'  => $request->except(['password', 'password_confirmation']),
-                'body'   => $response->getContent(),
-            ]);
+        $status = $response->getStatusCode();
+        if ($status < 400) {
+            return $response;
         }
+
+        $context = [
+            'method' => $request->method(),
+            'path'   => $request->getPathInfo(),
+            'status' => $status,
+        ];
+
+        $contentType = $response->headers->get('Content-Type', '');
+        if (str_contains($contentType, 'application/json')) {
+            $context['body'] = json_decode($response->getContent(), true);
+        }
+
+        \Log::warning('http.error', $context);
 
         return $response;
     }
