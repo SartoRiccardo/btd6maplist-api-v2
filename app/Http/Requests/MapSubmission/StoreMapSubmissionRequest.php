@@ -40,14 +40,16 @@ class StoreMapSubmissionRequest extends BaseRequest
         ];
     }
 
-    public function withValidator($validator): void
+    public function after(): array
     {
-        $validator->after(function ($validator) {
-            $value = $this->input('subm_notes');
-            if ($value !== null && substr_count($value, "\n") > 40) {
-                $validator->errors()->add('subm_notes', 'The submission notes may not have more than 40 newlines.');
+        return [
+            function (\Illuminate\Validation\Validator $validator) {
+                $value = $this->input('subm_notes');
+                if ($value !== null && substr_count($value, "\n") > 40) {
+                    $validator->errors()->add('subm_notes', 'The submission notes may not have more than 40 newlines.');
+                }
             }
-        });
+        ];
     }
 
     /**

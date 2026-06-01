@@ -842,7 +842,7 @@ class StoreTest extends TestCase
                 'format_id' => $format->id,
                 'proposed' => 0,
                 'completion_proof' => UploadedFile::fake()->image('proof.jpg'),
-                'subm_notes' => str_repeat("line\n", 41),
+                'subm_notes' => str_repeat("line\n", 42),
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['subm_notes']);
