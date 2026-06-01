@@ -16,17 +16,17 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
 
-COPY . .
-
-RUN composer dump-autoload --optimize \
-    && chown -R www-data:www-data storage bootstrap/cache
-
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/php-custom.ini /usr/local/etc/php/conf.d/custom.ini
 COPY docker/php-fpm-pool.conf /usr/local/etc/php-fpm.d/zz-logging.conf
 COPY docker/supervisord.ini /etc/supervisor.d/supervisord.ini
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+COPY . .
+
+RUN composer dump-autoload --optimize \
+    && chown -R www-data:www-data storage bootstrap/cache
 
 EXPOSE 80
 
