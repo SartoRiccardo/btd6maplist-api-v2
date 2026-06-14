@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Completions\List;
 
+use App\Constants\FormatConstants;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
 use App\Models\CompletionProof;
 use App\Models\Map;
 use App\Models\MapListMeta;
 use App\Models\User;
+use PHPUnit\Metadata\Group;
 use Tests\Helpers\CompletionTestHelper;
 use Tests\TestCase;
 
@@ -198,5 +200,81 @@ class ResponseStructureTest extends TestCase
 
         $this->assertFalse($byId[$completionPrivate->id]['is_video_proof_public']);
         $this->assertSame([], $byId[$completionPrivate->id]['subm_proof_vid']);
+    }
+
+    // ============================================
+    // view:submission:full permission Tests
+    // ============================================
+
+    #[Group('get')]
+    #[Group('completions')]
+    public function test_view_submission_full_on_correct_format_overrides_video_suppression_in_list(): void
+    {
+        $completion = Completion::factory()->create(['is_video_proof_public' => false]);
+        CompletionMeta::factory()->for($completion)->accepted()->create([
+            'format_id' => FormatConstants::MAPLIST,
+        ]);
+        $proof = CompletionProof::factory()->video()->create(['run' => $completion->id]);
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['view:submission:full']]);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson('/api/completions')
+            ->assertStatus(200)
+            ->json('data');
+
+        $this->assertCount(1, $actual);
+        $this->assertFalse($actual[0]['is_video_proof_public']);
+        $this->assertEquals([$proof->proof_url], $actual[0]['subm_proof_vid']);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    public function test_view_submission_full_on_wrong_format_does_not_override_in_list(): void
+    {
+        $completion = Completion::factory()->create(['is_video_proof_public' => false]);
+        CompletionMeta::factory()->for($completion)->accepted()->create([
+            'format_id' => FormatConstants::MAPLIST,
+        ]);
+        CompletionProof::factory()->video()->create(['run' => $completion->id]);
+
+        $user = $this->createUserWithPermissions([FormatConstants::EXPERT_LIST => ['view:submission:full']]);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson('/api/completions')
+            ->assertStatus(200)
+            ->json('data');
+
+        $this->assertSame([], $actual[0]['subm_proof_vid']);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    public function test_view_submission_full_override_is_per_format_in_list(): void
+    {
+        $completionA = Completion::factory()->create(['is_video_proof_public' => false]);
+        CompletionMeta::factory()->for($completionA)->accepted()->create([
+            'format_id' => FormatConstants::MAPLIST,
+            'created_on' => now()->subSeconds(2),
+        ]);
+        $proofA = CompletionProof::factory()->video()->create(['run' => $completionA->id]);
+
+        $completionB = Completion::factory()->create(['is_video_proof_public' => false]);
+        CompletionMeta::factory()->for($completionB)->accepted()->create([
+            'format_id' => FormatConstants::EXPERT_LIST,
+            'created_on' => now()->subSeconds(1),
+        ]);
+        CompletionProof::factory()->video()->create(['run' => $completionB->id]);
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['view:submission:full']]);
+
+        $data = $this->actingAs($user, 'discord')
+            ->getJson('/api/completions')
+            ->assertStatus(200)
+            ->json('data');
+
+        $byId = collect($data)->keyBy('id');
+        $this->assertEquals([$proofA->proof_url], $byId[$completionA->id]['subm_proof_vid']);
+        $this->assertSame([], $byId[$completionB->id]['subm_proof_vid']);
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Requests\Completion\IndexCompletionRequest;
 use App\Http\Requests\Completion\StoreBotCompletionRequest;
 use App\Http\Requests\Completion\StoreCompletionRequest;
 use App\Http\Requests\Completion\UpdateCompletionRequest;
+use App\Constants\ProofType;
 use App\Jobs\SendCompletionSubmissionWebhookJob;
 use App\Jobs\UpdateCompletionWebhookJob;
 use App\Models\Completion;
@@ -165,6 +166,15 @@ class CompletionController
                 ->pluck('id');
         }
 
+        // Resolve view:submission:full permission for video proof override
+        $viewFullPermittedFormatIds = [];
+        $viewFullGlobalPerm = false;
+        $authUserForViewFull = auth()->guard('discord')->user();
+        if ($authUserForViewFull) {
+            $viewFullPermittedFormatIds = $authUserForViewFull->formatsWithPermission('view:submission:full');
+            $viewFullGlobalPerm = in_array(null, $viewFullPermittedFormatIds, true);
+        }
+
         // Resolve admin_note visibility: only shown to users with edit:completion on the format
         $includeAdminNote = in_array('admin_note', $include);
         $adminNotePermittedFormatIds = [];
@@ -190,7 +200,7 @@ class CompletionController
         }
 
         // Build data array from paginated metas
-        $data = $metaPaginated->map(function ($meta) use ($mapMetadataByKey, $currentLccIds, $includeAdminNote, $adminNotePermittedFormatIds, $adminNoteGlobalPerm) {
+        $data = $metaPaginated->map(function ($meta) use ($mapMetadataByKey, $currentLccIds, $includeAdminNote, $adminNotePermittedFormatIds, $adminNoteGlobalPerm, $viewFullPermittedFormatIds, $viewFullGlobalPerm) {
             $completion = $meta->completion;
             if (!$completion) {
                 return null;
@@ -208,6 +218,14 @@ class CompletionController
 
             if ($includeAdminNote && ($adminNoteGlobalPerm || in_array($meta->format_id, $adminNotePermittedFormatIds, true))) {
                 $result['admin_note'] = $completion->admin_note;
+            }
+
+            if (!$completion->is_video_proof_public && ($viewFullGlobalPerm || in_array($meta->format_id, $viewFullPermittedFormatIds, true))) {
+                $result['subm_proof_vid'] = $completion->proofs
+                    ->where('proof_type', ProofType::VIDEO)
+                    ->pluck('proof_url')
+                    ->values()
+                    ->toArray();
             }
 
             return $result;
@@ -362,6 +380,20 @@ class CompletionController
             }
             if ($canSee) {
                 $result['admin_note'] = $completion->admin_note;
+            }
+        }
+
+        if (!$completion->is_video_proof_public) {
+            $authUser = auth()->guard('discord')->user();
+            if ($authUser) {
+                $permittedFormatIds = $authUser->formatsWithPermission('view:submission:full');
+                if (in_array(null, $permittedFormatIds, true) || in_array($meta->format_id, $permittedFormatIds, true)) {
+                    $result['subm_proof_vid'] = $completion->proofs
+                        ->where('proof_type', ProofType::VIDEO)
+                        ->pluck('proof_url')
+                        ->values()
+                        ->toArray();
+                }
             }
         }
 
