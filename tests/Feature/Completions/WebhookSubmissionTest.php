@@ -123,6 +123,68 @@ class WebhookSubmissionTest extends TestCase
 
     #[Group('webhook')]
     #[Group('completions')]
+    public function test_is_video_proof_public_true_includes_video_urls_in_webhook(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->run_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        $response = $this->actingAs($user, 'discord')
+            ->postJson('/api/completions/submit', [
+                'map' => $map->code,
+                'format_id' => $format->id,
+                'players' => [$user->discord_id],
+                'proof_images' => $this->createProofImages(),
+                'proof_videos' => ['https://youtu.be/abc123'],
+                'is_video_proof_public' => true,
+            ]);
+
+        $response->assertStatus(201);
+        $completion = Completion::find($response->json('id'));
+        $payload = json_decode($completion->wh_data, true);
+        $infoEmbed = $payload['embeds'][0];
+
+        $fieldNames = array_column($infoEmbed['fields'], 'name');
+        $this->assertContains('Video Proof URL', $fieldNames);
+
+        $videoField = collect($infoEmbed['fields'])->firstWhere('name', 'Video Proof URL');
+        $this->assertEquals('https://youtu.be/abc123', $videoField['value']);
+    }
+
+    #[Group('webhook')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_false_omits_video_urls_from_webhook(): void
+    {
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $format = Format::find(FormatConstants::MAPLIST);
+        $format->run_submission_wh = 'https://discord.com/api/webhooks/test/webhook';
+        $format->save();
+
+        $response = $this->actingAs($user, 'discord')
+            ->postJson('/api/completions/submit', [
+                'map' => $map->code,
+                'format_id' => $format->id,
+                'players' => [$user->discord_id],
+                'proof_images' => $this->createProofImages(),
+                'proof_videos' => ['https://youtu.be/abc123'],
+                'is_video_proof_public' => false,
+            ]);
+
+        $response->assertStatus(201);
+        $completion = Completion::find($response->json('id'));
+        $payload = json_decode($completion->wh_data, true);
+        $infoEmbed = $payload['embeds'][0];
+
+        $fieldNames = array_column($infoEmbed['fields'], 'name');
+        $this->assertNotContains('Video Proof URL', $fieldNames);
+        $this->assertNotContains('Video Proof URLs', $fieldNames);
+    }
+
+    #[Group('webhook')]
+    #[Group('completions')]
     public function test_completion_job_with_three_images_produces_three_embeds(): void
     {
         $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['create:completion_submission']]);

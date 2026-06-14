@@ -145,12 +145,14 @@ class SendCompletionSubmissionWebhookJob implements ShouldQueue
             }
         }
 
-        // Get video proof URLs
-        $videoProofs = $completion->proofs
-            ->where('proof_type', ProofType::VIDEO)
-            ->pluck('proof_url')
-            ->values()
-            ->toArray();
+        // Get video proof URLs (suppressed when is_video_proof_public is false)
+        $videoProofs = $completion->is_video_proof_public
+            ? $completion->proofs
+                ->where('proof_type', ProofType::VIDEO)
+                ->pluck('proof_url')
+                ->values()
+                ->toArray()
+            : [];
 
         // Get first image proof
         $firstImage = $completion->proofs
