@@ -19,8 +19,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  *     @OA\Property(property="map_code", type="string", description="Map code"),
  *     @OA\Property(property="created_on", type="integer", description="Timestamp when completion was submitted"),
  *     @OA\Property(property="subm_notes", type="string", nullable=true, description="Submission notes"),
+ *     @OA\Property(property="is_video_proof_public", type="boolean", description="Whether the video proof is public; when true, subm_proof_vid is always empty"),
  *     @OA\Property(property="subm_proof_img", type="array", @OA\Items(type="string"), description="Image proof URLs"),
- *     @OA\Property(property="subm_proof_vid", type="array", @OA\Items(type="string"), description="Video proof URLs")
+ *     @OA\Property(property="subm_proof_vid", type="array", @OA\Items(type="string"), description="Video proof URLs (empty when is_video_proof_public is true)")
  * )
  */
 class Completion extends Model
@@ -48,12 +49,15 @@ class Completion extends Model
         'id',
         'map_code',
         'subm_notes',
+        'is_video_proof_public',
         'wh_msg_id',
         'wh_data',
         'copied_from_id',
     ];
 
-    protected $casts = [];
+    protected $casts = [
+        'is_video_proof_public' => 'boolean',
+    ];
 
     /**
      * Get the map for this completion.
@@ -92,9 +96,13 @@ class Completion extends Model
 
     /**
      * Get video proof URLs for API responses.
+     * Returns an empty array when is_video_proof_public is true.
      */
     public function getSubmProofVidAttribute(): array
     {
+        if (!$this->is_video_proof_public) {
+            return [];
+        }
         if (!$this->relationLoaded('proofs')) {
             $this->load('proofs');
         }
@@ -121,6 +129,7 @@ class Completion extends Model
             'map_code' => 'TESTCODE',
             'submitted_on' => now()->timestamp,
             'subm_notes' => null,
+            'is_video_proof_public' => true,
             'subm_proof_img' => [],
             'subm_proof_vid' => [],
             'map' => null,
@@ -138,6 +147,7 @@ class Completion extends Model
             'map_code',
             'submitted_on',
             'subm_notes',
+            'is_video_proof_public',
             'subm_proof_img',
             'subm_proof_vid',
             'map',

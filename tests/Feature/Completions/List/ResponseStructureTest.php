@@ -4,6 +4,7 @@ namespace Tests\Feature\Completions\List;
 
 use App\Models\Completion;
 use App\Models\CompletionMeta;
+use App\Models\CompletionProof;
 use App\Models\Map;
 use App\Models\MapListMeta;
 use App\Models\User;
@@ -143,5 +144,59 @@ class ResponseStructureTest extends TestCase
             ...$map2->toArray(),
             ...$map2Meta->toArray(),
         ], $actual[1]['map']);
+    }
+
+    // ============================================
+    // is_video_proof_public Tests
+    // ============================================
+
+    #[Group('get')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_true_returns_video_proofs_in_list(): void
+    {
+        $completion = Completion::factory()->create(['is_video_proof_public' => true]);
+        CompletionMeta::factory()->for($completion)->accepted()->create();
+        $proof = CompletionProof::factory()->video()->create(['run' => $completion->id]);
+
+        $actual = $this->getJson('/api/completions')
+            ->assertStatus(200)
+            ->json('data');
+
+        $this->assertCount(1, $actual);
+        $this->assertTrue($actual[0]['is_video_proof_public']);
+        $this->assertEquals([$proof->proof_url], $actual[0]['subm_proof_vid']);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_suppression_is_per_record_in_list(): void
+    {
+        $completionPublic = Completion::factory()->create(['is_video_proof_public' => true]);
+        CompletionMeta::factory()->for($completionPublic)->accepted()->create([
+            'created_on' => now()->subSeconds(2),
+        ]);
+        $videoProof = CompletionProof::factory()->video()->create(['run' => $completionPublic->id]);
+        CompletionProof::factory()->image()->create(['run' => $completionPublic->id]);
+
+        $completionPrivate = Completion::factory()->create(['is_video_proof_public' => false]);
+        CompletionMeta::factory()->for($completionPrivate)->accepted()->create([
+            'created_on' => now()->subSeconds(1),
+        ]);
+        CompletionProof::factory()->video()->create(['run' => $completionPrivate->id]);
+
+        $data = $this->getJson('/api/completions')
+            ->assertStatus(200)
+            ->json('data');
+
+        $this->assertCount(2, $data);
+
+        $byId = collect($data)->keyBy('id');
+
+        $this->assertTrue($byId[$completionPublic->id]['is_video_proof_public']);
+        $this->assertEquals([$videoProof->proof_url], $byId[$completionPublic->id]['subm_proof_vid']);
+        $this->assertCount(1, $byId[$completionPublic->id]['subm_proof_img']);
+
+        $this->assertFalse($byId[$completionPrivate->id]['is_video_proof_public']);
+        $this->assertSame([], $byId[$completionPrivate->id]['subm_proof_vid']);
     }
 }

@@ -5,7 +5,7 @@ namespace Tests\Feature\Completions;
 use App\Constants\FormatConstants;
 use App\Models\Completion;
 use App\Models\CompletionMeta;
-use App\Models\LeastCostChimps;
+use App\Models\CompletionProof;
 use App\Models\MapListMeta;
 use App\Models\User;
 use App\Services\NinjaKiwi\NinjaKiwiApiClient;
@@ -566,9 +566,47 @@ class ShowTest extends TestCase
         $this->assertEquals('Admin flagged', $actual['admin_note']);
     }
 
+    // ============================================
+    // is_video_proof_public Tests
+    // ============================================
+
     #[Group('get')]
     #[Group('completions')]
-    #[Group('include')]
+    public function test_is_video_proof_public_true_returns_video_proofs(): void
+    {
+        $completion = Completion::factory()->create(['is_video_proof_public' => true]);
+        CompletionMeta::factory()->for($completion)->accepted()->create();
+        $proof = CompletionProof::factory()->video()->create(['run' => $completion->id]);
+
+        $actual = $this->getJson("/api/completions/{$completion->id}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertTrue($actual['is_video_proof_public']);
+        $this->assertIsBool($actual['is_video_proof_public']);
+        $this->assertEquals([$proof->proof_url], $actual['subm_proof_vid']);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_false_suppresses_videos_but_not_images(): void
+    {
+        $completion = Completion::factory()->create(['is_video_proof_public' => false]);
+        CompletionMeta::factory()->for($completion)->accepted()->create();
+        CompletionProof::factory()->video()->create(['run' => $completion->id]);
+        CompletionProof::factory()->image()->create(['run' => $completion->id]);
+
+        $actual = $this->getJson("/api/completions/{$completion->id}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertFalse($actual['is_video_proof_public']);
+        $this->assertSame([], $actual['subm_proof_vid']);
+        $this->assertCount(1, $actual['subm_proof_img']);
+    }
+
+    #[Group('get')]
+    #[Group('completions')]
     public function test_admin_note_null_when_not_set(): void
     {
         $completion = Completion::factory()->create(['admin_note' => null]);

@@ -509,6 +509,7 @@ class StoreCompletionTest extends TestCase
             'proof_videos' => ['https://youtube.com/watch?v=test1', 'https://youtube.com/watch?v=test2'],
             'lcc' => ['leftover' => 5000],
             'subm_notes' => 'Full test notes',
+            'is_video_proof_public' => true,
         ];
 
         $response = $this->actingAs($user, 'discord')
@@ -567,5 +568,176 @@ class StoreCompletionTest extends TestCase
         $this->assertCount(2, $files);
         $this->assertStringContainsString('img_', $files[0]);
         $this->assertStringEndsWith('.jpg', $files[0]);
+    }
+
+    // ========== is_video_proof_public TESTS ==========
+
+    /**
+     * is_video_proof_public absent → defaults to true, videos visible in GET
+     */
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_absent_defaults_to_true_and_videos_visible(): void
+    {
+        Storage::fake('public');
+
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$player->discord_id],
+            'proof_images' => $this->createProofImages(),
+            'proof_videos' => ['https://youtube.com/watch?v=abc123'],
+        ];
+
+        $completionId = $this->actingAs($user, 'discord')
+            ->post($this->endpoint(), $payload)
+            ->assertStatus(201)
+            ->json('id');
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completionId}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertTrue($actual['is_video_proof_public']);
+        $this->assertEquals(['https://youtube.com/watch?v=abc123'], $actual['subm_proof_vid']);
+    }
+
+    /**
+     * is_video_proof_public: true → videos visible, image proofs also visible
+     */
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_true_shows_videos_and_images(): void
+    {
+        Storage::fake('public');
+
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$player->discord_id],
+            'proof_images' => $this->createProofImages(2),
+            'proof_videos' => ['https://youtube.com/watch?v=abc123'],
+            'is_video_proof_public' => true,
+        ];
+
+        $completionId = $this->actingAs($user, 'discord')
+            ->post($this->endpoint(), $payload)
+            ->assertStatus(201)
+            ->json('id');
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completionId}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertTrue($actual['is_video_proof_public']);
+        $this->assertEquals(['https://youtube.com/watch?v=abc123'], $actual['subm_proof_vid']);
+        $this->assertCount(2, $actual['subm_proof_img']);
+    }
+
+    /**
+     * is_video_proof_public: false → videos suppressed, image proofs still visible
+     */
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_false_suppresses_videos_but_not_images(): void
+    {
+        Storage::fake('public');
+
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$player->discord_id],
+            'proof_images' => $this->createProofImages(2),
+            'proof_videos' => ['https://youtube.com/watch?v=def456'],
+            'is_video_proof_public' => false,
+        ];
+
+        $completionId = $this->actingAs($user, 'discord')
+            ->post($this->endpoint(), $payload)
+            ->assertStatus(201)
+            ->json('id');
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completionId}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertFalse($actual['is_video_proof_public']);
+        $this->assertSame([], $actual['subm_proof_vid']);
+        $this->assertCount(2, $actual['subm_proof_img']);
+    }
+
+    /**
+     * is_video_proof_public: non-boolean string → 422
+     */
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_non_boolean_returns_422(): void
+    {
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$player->discord_id],
+            'proof_images' => $this->createProofImages(),
+            'is_video_proof_public' => 'yes',
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->postJson($this->endpoint(), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['is_video_proof_public']);
+    }
+
+    /**
+     * is_video_proof_public: true with no submitted videos → subm_proof_vid is [] (no proofs stored)
+     */
+    #[Group('post')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_true_with_no_videos_returns_empty_array(): void
+    {
+        Storage::fake('public');
+
+        $map = $this->createMapForFormat(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $payload = [
+            'map' => $map->code,
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$player->discord_id],
+            'proof_images' => $this->createProofImages(),
+            'is_video_proof_public' => true,
+        ];
+
+        $completionId = $this->actingAs($user, 'discord')
+            ->post($this->endpoint(), $payload)
+            ->assertStatus(201)
+            ->json('id');
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completionId}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertTrue($actual['is_video_proof_public']);
+        $this->assertSame([], $actual['subm_proof_vid']); // empty because no proofs were submitted
     }
 }

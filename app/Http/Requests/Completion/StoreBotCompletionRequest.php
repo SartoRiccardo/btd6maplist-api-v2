@@ -30,6 +30,7 @@ class StoreBotCompletionRequest extends CompletionRequest
             'proof_images.*' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:10240'],
             'proof_videos' => ['nullable', 'array', 'max:10'],
             'proof_videos.*' => ['required', 'url', 'max:500'],
+            'is_video_proof_public' => ['nullable', 'boolean'],
         ]);
     }
 }

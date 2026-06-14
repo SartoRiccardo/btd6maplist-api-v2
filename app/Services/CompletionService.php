@@ -33,6 +33,7 @@ class CompletionService
                 'map_code' => $data['map'],
                 'submitted_on' => Carbon::now(),
                 'subm_notes' => $data['subm_notes'] ?? null,
+                'is_video_proof_public' => $data['is_video_proof_public'] ?? true,
             ]);
 
             // Handle proof image uploads

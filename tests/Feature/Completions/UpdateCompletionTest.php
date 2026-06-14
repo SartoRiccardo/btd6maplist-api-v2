@@ -692,4 +692,169 @@ class UpdateCompletionTest extends TestCase
             ->putJson("/api/completions/{$completion->id}", $payload)
             ->assertStatus(204);
     }
+
+    // ========== is_video_proof_public TESTS ==========
+
+    /**
+     * PUT with is_video_proof_public: true on a completion originally false → value stays false
+     */
+    #[Group('put')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_cannot_be_changed_from_false_to_true_via_put(): void
+    {
+        $map = Map::factory()->create();
+        MapListMeta::factory()->for($map)->create([
+            'placement_curver' => 1,
+            'placement_allver' => 1,
+            'difficulty' => 1,
+            'botb_difficulty' => 1,
+        ]);
+        $completion = Completion::factory()->create([
+            'map_code' => $map->code,
+            'is_video_proof_public' => false,
+        ]);
+        $player = User::factory()->create();
+        $meta = CompletionMeta::factory()->for($completion)->create([
+            'format_id' => FormatConstants::MAPLIST,
+            'created_on' => Carbon::now()->subSeconds(2),
+        ]);
+        $meta->players()->attach($player->discord_id);
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $payload = [
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$player->discord_id],
+            'accept' => false,
+            'is_video_proof_public' => true,
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/completions/{$completion->id}", $payload)
+            ->assertStatus(204);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completion->id}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertFalse($actual['is_video_proof_public']);
+    }
+
+    /**
+     * PUT with is_video_proof_public: false on a completion originally true → value stays true
+     */
+    #[Group('put')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_cannot_be_changed_from_true_to_false_via_put(): void
+    {
+        $map = Map::factory()->create();
+        MapListMeta::factory()->for($map)->create([
+            'placement_curver' => 1,
+            'placement_allver' => 1,
+            'difficulty' => 1,
+            'botb_difficulty' => 1,
+        ]);
+        $completion = Completion::factory()->create([
+            'map_code' => $map->code,
+            'is_video_proof_public' => true,
+        ]);
+        $player = User::factory()->create();
+        $meta = CompletionMeta::factory()->for($completion)->create([
+            'format_id' => FormatConstants::MAPLIST,
+            'created_on' => Carbon::now()->subSeconds(2),
+        ]);
+        $meta->players()->attach($player->discord_id);
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $newPlayer = User::factory()->create();
+
+        $payload = [
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$newPlayer->discord_id],
+            'accept' => false,
+            'is_video_proof_public' => false,
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/completions/{$completion->id}", $payload)
+            ->assertStatus(204);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completion->id}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertTrue($actual['is_video_proof_public']);
+    }
+
+    /**
+     * PUT with is_video_proof_public: "notabool" → 204, not 422 (rule is intentionally absent)
+     */
+    #[Group('put')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_non_boolean_in_put_returns_204_not_422(): void
+    {
+        $completion = $this->createCompletionForUpdate(FormatConstants::MAPLIST);
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $player = User::factory()->create();
+
+        $payload = [
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$player->discord_id],
+            'accept' => false,
+            'is_video_proof_public' => 'notabool',
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/completions/{$completion->id}", $payload)
+            ->assertStatus(204);
+    }
+
+    /**
+     * PUT without is_video_proof_public key → existing true value is preserved
+     */
+    #[Group('put')]
+    #[Group('completions')]
+    public function test_is_video_proof_public_preserved_when_key_absent_in_put(): void
+    {
+        $map = Map::factory()->create();
+        MapListMeta::factory()->for($map)->create([
+            'placement_curver' => 1,
+            'placement_allver' => 1,
+            'difficulty' => 1,
+            'botb_difficulty' => 1,
+        ]);
+        $completion = Completion::factory()->create([
+            'map_code' => $map->code,
+            'is_video_proof_public' => true,
+        ]);
+        $player = User::factory()->create();
+        $meta = CompletionMeta::factory()->for($completion)->create([
+            'format_id' => FormatConstants::MAPLIST,
+            'created_on' => Carbon::now()->subSeconds(2),
+        ]);
+        $meta->players()->attach($player->discord_id);
+
+        $user = $this->createUserWithPermissions([FormatConstants::MAPLIST => ['edit:completion']]);
+        $newPlayer = User::factory()->create();
+
+        $payload = [
+            'format_id' => FormatConstants::MAPLIST,
+            'players' => [$newPlayer->discord_id],
+            'accept' => false,
+        ];
+
+        $this->actingAs($user, 'discord')
+            ->putJson("/api/completions/{$completion->id}", $payload)
+            ->assertStatus(204);
+
+        $actual = $this->actingAs($user, 'discord')
+            ->getJson("/api/completions/{$completion->id}")
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertTrue($actual['is_video_proof_public']);
+    }
 }
