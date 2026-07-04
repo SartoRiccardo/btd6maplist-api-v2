@@ -140,7 +140,7 @@ class MapSeeder extends Seeder
                 'placement_allver' => null,
                 'difficulty' => $index % 5,
                 'optimal_heros' => $this->faker->randomElements(
-                    ['Quincy', 'Gwendolin', 'Striker Jones', 'Obyn', 'Benjamin', 'Ezili', 'Pat Fusty', 'Adora', 'Churchill', 'Etienne', 'Sauda'],
+                    ['Quincy', 'Gwendolin', 'Striker Jones', 'Obyn', 'Benjamin', 'Ezili', 'Pat Fusty', 'Adora', 'Churchill', 'Etienne', 'Sauda', 'Dan'],
                     $this->faker->numberBetween(0, 3)
                 ),
                 'botb_difficulty' => $index % 5,

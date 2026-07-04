@@ -41,6 +41,7 @@ class MapListMetaFactory extends Factory
             'Etienne',
             'Geraldo',
             'Rosalia',
+            'Dan',
         ];
 
         $optimalHeroes = [];
