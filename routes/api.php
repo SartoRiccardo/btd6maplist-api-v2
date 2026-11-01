@@ -114,6 +114,8 @@ Route::prefix('completions')
                 Route::delete('/{id}', 'destroy');
                 Route::put('/{id}/admin-note', 'setAdminNote');
                 Route::delete('/{id}/admin-note', 'deleteAdminNote');
+                Route::post('/{id}/pin', 'pin');
+                Route::post('/{id}/unpin', 'unpin');
             });
     });
 

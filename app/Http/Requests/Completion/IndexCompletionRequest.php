@@ -18,7 +18,8 @@ use App\Http\Requests\BaseRequest;
  *     @OA\Property(property="no_geraldo", type="string", enum={"only", "exclude", "any"}, description="Filter by no_geraldo status", example="any"),
  *     @OA\Property(property="lcc", type="string", enum={"only", "exclude", "any"}, description="Filter by LCC presence", example="any"),
  *     @OA\Property(property="black_border", type="string", enum={"only", "exclude", "any"}, description="Filter by black_border status", example="any"),
- *     @OA\Property(property="sort_by", type="string", enum={"created_on"}, description="Field to sort by", example="created_on"),
+ *     @OA\Property(property="is_pinned", type="string", enum={"only", "exclude", "any"}, description="Filter by whether the completion is pinned by the authenticated user. 'only'/'exclude' have no effect for unauthenticated requests", example="any"),
+ *     @OA\Property(property="sort_by", type="string", enum={"created_on", "pinned"}, description="Field to sort by. 'pinned' sorts completions pinned by the authenticated user first, then by created_on", example="created_on"),
  *     @OA\Property(property="sort_order", type="string", enum={"asc", "desc"}, description="Sort order", example="asc"),
  *     @OA\Property(property="include", type="string", description="Include additional resources (comma-separated)", example="map.metadata")
  * )
@@ -50,6 +51,7 @@ class IndexCompletionRequest extends BaseRequest
             'no_geraldo' => $this->input('no_geraldo', 'any'),
             'lcc' => $this->input('lcc', 'any'),
             'black_border' => $this->input('black_border', 'any'),
+            'is_pinned' => $this->input('is_pinned', 'any'),
             'sort_by' => $this->input('sort_by', 'created_on'),
             'sort_order' => $this->input('sort_order', 'asc'),
             'include' => $include ?? [],
@@ -74,7 +76,8 @@ class IndexCompletionRequest extends BaseRequest
             'no_geraldo' => ['nullable', 'in:only,exclude,any'],
             'lcc' => ['nullable', 'in:only,exclude,any'],
             'black_border' => ['nullable', 'in:only,exclude,any'],
-            'sort_by' => ['nullable', 'in:created_on'],
+            'is_pinned' => ['nullable', 'in:only,exclude,any'],
+            'sort_by' => ['nullable', 'in:created_on,pinned'],
             'sort_order' => ['nullable', 'in:asc,desc'],
             'include' => ['nullable', 'array'],
             'include.*' => ['string', 'in:map.metadata,players.flair,admin_note'],
@@ -92,7 +95,8 @@ class IndexCompletionRequest extends BaseRequest
             'no_geraldo.in' => 'The no_geraldo field must be one of: only, exclude, any.',
             'lcc.in' => 'The lcc field must be one of: only, exclude, any.',
             'black_border.in' => 'The black_border field must be one of: only, exclude, any.',
-            'sort_by.in' => 'The sort_by field must be one of: created_on.',
+            'is_pinned.in' => 'The is_pinned field must be one of: only, exclude, any.',
+            'sort_by.in' => 'The sort_by field must be one of: created_on, pinned.',
             'sort_order.in' => 'The sort_order field must be one of: asc, desc.',
             'format_id.exists' => 'The selected format does not exist.',
         ];

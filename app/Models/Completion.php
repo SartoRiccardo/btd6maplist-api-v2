@@ -159,6 +159,7 @@ class Completion extends Model
             'lcc',
             'players',
             'is_current_lcc',
+            'is_pinned',
             'format_id',
         ];
     }

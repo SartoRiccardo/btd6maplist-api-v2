@@ -47,6 +47,7 @@ class CompletionTestHelper
             ...$metaArray,
             ...$completionArray,
             'is_current_lcc' => false,
+            'is_pinned' => false,
             ...$overrides,
         ]);
     }

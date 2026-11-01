@@ -24,6 +24,8 @@ use Illuminate\Support\Facades\Storage;
 
 class CompletionController
 {
+    public const PIN_CAP = 5;
+
     /**
      * Get a paginated list of completions.
      *
@@ -43,6 +45,7 @@ class CompletionController
      *     @OA\Parameter(name="no_geraldo", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexCompletionRequest/properties/no_geraldo")),
      *     @OA\Parameter(name="lcc", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexCompletionRequest/properties/lcc")),
      *     @OA\Parameter(name="black_border", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexCompletionRequest/properties/black_border")),
+     *     @OA\Parameter(name="is_pinned", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexCompletionRequest/properties/is_pinned")),
      *     @OA\Parameter(name="sort_by", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexCompletionRequest/properties/sort_by")),
      *     @OA\Parameter(name="sort_order", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexCompletionRequest/properties/sort_order")),
      *     @OA\Parameter(name="include", in="query", required=false, @OA\Schema(ref="#/components/schemas/IndexCompletionRequest/properties/include")),
@@ -73,9 +76,16 @@ class CompletionController
         $blackBorder = $validated['black_border'] ?? 'any';
         $playerId = $validated['player_id'] ?? null;
         $mapCode = $validated['map_code'] ?? null;
+        $isPinned = $validated['is_pinned'] ?? 'any';
         $sortBy = $validated['sort_by'] ?? 'created_on';
         $sortOrder = $validated['sort_order'] ?? 'asc';
         $include = $validated['include'] ?? [];
+
+        // Pinned completions of the authenticated user (used for filter, sort and output)
+        $authUser = auth()->guard('discord')->user();
+        $pinnedIds = $authUser
+            ? DB::table('pinned_completions')->where('user_id', $authUser->discord_id)->pluck('completion_id')
+            : collect();
 
         // Build query for CompletionMeta to get active completion IDs
         $latestMetaCte = CompletionMeta::activeAtTimestamp($timestamp);
@@ -140,7 +150,24 @@ class CompletionController
             $metaQuery->whereIn('format_id', $formatId);
         }
 
-        $metaPaginated = $metaQuery->orderBy($sortBy, $sortOrder)
+        // Apply is_pinned filter (relative to authenticated user)
+        if ($isPinned === 'only') {
+            $metaQuery->whereIn('completion_id', $pinnedIds);
+        } elseif ($isPinned === 'exclude' && $pinnedIds->isNotEmpty()) {
+            $metaQuery->whereNotIn('completion_id', $pinnedIds);
+        }
+
+        if ($sortBy === 'pinned') {
+            if ($pinnedIds->isNotEmpty()) {
+                $placeholders = $pinnedIds->map(fn () => '?')->implode(',');
+                $metaQuery->orderByRaw("(completion_id IN ($placeholders)) desc", $pinnedIds->all());
+            }
+            $metaQuery->orderBy('created_on', $sortOrder);
+        } else {
+            $metaQuery->orderBy($sortBy, $sortOrder);
+        }
+
+        $metaPaginated = $metaQuery
             ->paginate($perPage, ['*'], 'page', $page);
 
         // Load map metadata if requested
@@ -200,7 +227,7 @@ class CompletionController
         }
 
         // Build data array from paginated metas
-        $data = $metaPaginated->map(function ($meta) use ($mapMetadataByKey, $currentLccIds, $includeAdminNote, $adminNotePermittedFormatIds, $adminNoteGlobalPerm, $viewFullPermittedFormatIds, $viewFullGlobalPerm) {
+        $data = $metaPaginated->map(function ($meta) use ($mapMetadataByKey, $currentLccIds, $includeAdminNote, $adminNotePermittedFormatIds, $adminNoteGlobalPerm, $viewFullPermittedFormatIds, $viewFullGlobalPerm, $pinnedIds) {
             $completion = $meta->completion;
             if (!$completion) {
                 return null;
@@ -214,6 +241,7 @@ class CompletionController
                     ...$completion->map->toArray(),
                 ],
                 'is_current_lcc' => $meta->lcc_id ? $currentLccIds->contains($meta->lcc_id) : false,
+                'is_pinned' => $pinnedIds->contains($completion->id),
             ];
 
             if ($includeAdminNote && ($adminNoteGlobalPerm || in_array($meta->format_id, $adminNotePermittedFormatIds, true))) {
@@ -332,6 +360,15 @@ class CompletionController
                 ->exists();
         }
 
+        // Check if pinned by the authenticated user
+        $authUserForPin = auth()->guard('discord')->user();
+        $isPinned = $authUserForPin
+            ? DB::table('pinned_completions')
+                ->where('user_id', $authUserForPin->discord_id)
+                ->where('completion_id', $completion->id)
+                ->exists()
+            : false;
+
         // Build result
         $result = [
             ...$meta->toArray(),
@@ -341,6 +378,7 @@ class CompletionController
                 ...$completion->map->toArray(),
             ],
             'is_current_lcc' => $isCurrentLcc,
+            'is_pinned' => $isPinned,
         ];
 
         // Replace accepted_by (string ID) with full user object
@@ -950,6 +988,88 @@ class CompletionController
                     UpdateCompletionWebhookJob::dispatch($existingMeta->completion_id, fail: true);
                 }
             }
+        }
+
+        return response()->noContent();
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/completions/{id}/pin",
+     *     summary="Pin a completion to your profile",
+     *     description="Pins a completion so it appears among the authenticated user's favorite completions (visible via GET /completions with sort_by=pinned or is_pinned filters). Only a player on the completion may pin it. A user may pin at most 5 completions. Idempotent - pinning an already pinned completion returns 204 without changes.",
+     *     tags={"Completions"},
+     *     security={{"discord_auth": {}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=204, description="Completion pinned"),
+     *     @OA\Response(response=403, description="Forbidden - authenticated user is not a player on the completion"),
+     *     @OA\Response(response=422, description="Pin cap (5) reached"),
+     *     @OA\Response(response=404, description="Completion not found")
+     * )
+     */
+    public function pin($id)
+    {
+        return $this->setPinned((int) $id, true);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/completions/{id}/unpin",
+     *     summary="Unpin a completion from your profile",
+     *     description="Removes the authenticated user's pin on a completion. Only a player on the completion may unpin it. Idempotent - unpinning a completion that is not pinned returns 204 without changes.",
+     *     tags={"Completions"},
+     *     security={{"discord_auth": {}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=204, description="Completion unpinned"),
+     *     @OA\Response(response=403, description="Forbidden - authenticated user is not a player on the completion"),
+     *     @OA\Response(response=404, description="Completion not found")
+     * )
+     */
+    public function unpin($id)
+    {
+        return $this->setPinned((int) $id, false);
+    }
+
+    protected function setPinned(int $id, bool $pinned)
+    {
+        $user = auth()->guard('discord')->user();
+
+        $completion = Completion::find($id);
+        if (!$completion) {
+            return response()->json(['message' => 'Not Found'], 404);
+        }
+
+        // Only a player on the completion may pin/unpin it
+        $isPlayer = DB::table('comp_players')
+            ->where('user_id', $user->discord_id)
+            ->whereIn('run', CompletionMeta::where('completion_id', $id)->select('id'))
+            ->exists();
+        if (!$isPlayer) {
+            return response()->json(['message' => 'Forbidden - You are not a player on this completion.'], 403);
+        }
+
+        if ($pinned) {
+            $alreadyPinned = DB::table('pinned_completions')
+                ->where('user_id', $user->discord_id)
+                ->where('completion_id', $id)
+                ->exists();
+            if (!$alreadyPinned) {
+                $pinCount = DB::table('pinned_completions')
+                    ->where('user_id', $user->discord_id)
+                    ->count();
+                if ($pinCount >= self::PIN_CAP) {
+                    return response()->json(['message' => 'You can pin at most ' . self::PIN_CAP . ' completions.'], 422);
+                }
+            }
+            DB::table('pinned_completions')->insertOrIgnore([
+                'user_id' => $user->discord_id,
+                'completion_id' => $id,
+            ]);
+        } else {
+            DB::table('pinned_completions')
+                ->where('user_id', $user->discord_id)
+                ->where('completion_id', $id)
+                ->delete();
         }
 
         return response()->noContent();
