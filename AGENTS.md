@@ -50,28 +50,6 @@ Routes should be documented with an OpenAPI compliant docstring.
 - Always assume every docstring you encounter was not written by you and was put there for a reason. When you want to modify or delete an existing docstring, **always ask first**.
 - Route descriptions are extremely important! Don't keep it vague like "Updates subagents for a workflow". Add detail such as "Updates subagents for a workflow. A user may edit only user-bound subagents. This route only sets the inputs for the subagent, the actual configuration of which subagents are settable are set in the Manifest routes".
 
-### Bruno Requests
-
-This project uses Bruno as a helper tool for developer UX. You can create routes for it in the `bruno/BTD6 Maplist API` folder.
-
-- Group requests semantically in a sub-folder.
-- Do not create tests for the routes, despite Bruno supporting it.
-- Do not add descriptions to the routes. They tend to never get updated, and an out of date documentation can be dangerous.
-- **IMPORTANT:** Always make Bruno routes of **every new route you create or you are asked to create**, even if it wasn't explicitely asked of you to do so.
-- If you need to set variables, use snippets like the following code below. This code sets the login token automatically upon calling the route:
-
-```
-script:post-response {
-  if (res.status === 200) {
-    const data = res.body;
-    if (data?.authorization?.token) {
-      bru.setEnvVar("USER_AUTH_TOKEN", data.authorization.token);
-      console.log("Token saved:", data.authorization.token.substring(0, 20) + "...");
-    }
-  }
-}
-```
-
 # Tools
 
 ## Database Schema
